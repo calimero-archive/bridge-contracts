@@ -2,7 +2,7 @@
 mod light_client {
     mod test {
         use light_client::hashes::encode_hex;
-        use light_client::{Block, BlockHeaderInnerLite, LightClient, Validator, Signature};
+        use light_client::{Block, BlockHeaderInnerLite, LightClient, PublicKey, Signature, Validator};
         use near_sdk::serde::de::DeserializeOwned;
         use near_sdk::serde_json::Value;
         use near_sdk::test_utils::{accounts, VMContextBuilder};
@@ -10,12 +10,17 @@ mod light_client {
         use std::error::Error;
         use std::fs::File;
         use std::io::BufReader;
+        use std::str::FromStr;
 
         const TEST_BLOCK_TIMESTAMP_MULTIPLIER: u64 = 100000000;
         const TEST_LOCK_DURATION: u64 = 10;
         const TEST_REPLACE_DURATION: u64 = 20000000000;
 
-        fn get_context(predecessor_account_id: AccountId, block_timestamp: u64, block_index: u64) -> VMContextBuilder {
+        fn get_context(
+            predecessor_account_id: AccountId,
+            block_timestamp: u64,
+            block_index: u64,
+        ) -> VMContextBuilder {
             let mut builder = VMContextBuilder::new();
             builder
                 .current_account_id(accounts(0))
@@ -43,7 +48,7 @@ mod light_client {
             for item in validators.unwrap() {
                 ret.push(Validator {
                     account_id: String::from(item["account_id"].as_str().unwrap()),
-                    public_key: String::from(item["public_key"].as_str().unwrap()),
+                    public_key: PublicKey::from_str(&String::from(item["public_key"].as_str().unwrap())).unwrap(),
                     stake: item["stake"].as_str().unwrap().parse::<u128>().unwrap(),
                     is_chunk_only: false,
                 });
@@ -59,7 +64,7 @@ mod light_client {
                 if val.is_none() {
                     ret.push(None);
                 } else {
-                    ret.push(Some(Signature { signature: val.unwrap().to_string() }));
+                    ret.push(Some(val.unwrap().to_string().parse::<Signature>().unwrap()));
                 }
             }
             return ret;
@@ -95,7 +100,8 @@ mod light_client {
 
         #[test]
         fn block_hashes() {
-            let mut context = get_context(accounts(0), 9605 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 9605);
+            let mut context =
+                get_context(accounts(0), 9605 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 9605);
             testing_env!(context.build());
 
             let mut bridge = init();
@@ -125,7 +131,10 @@ mod light_client {
                 .block_index(some_future_block_index)
                 .build());
 
-            assert!(encode_hex(&bridge.block_hashes(9610).unwrap()) == "f28629da269e59f2494c6bf283e9e67dadaa1c1f753607650d21e5e5b916a0dc");
+            assert!(
+                encode_hex(&bridge.block_hashes(9610).unwrap())
+                    == "f28629da269e59f2494c6bf283e9e67dadaa1c1f753607650d21e5e5b916a0dc"
+            );
         }
 
         #[test]
@@ -159,19 +168,21 @@ mod light_client {
             testing_env!(context_308.build());
             bridge.add_light_client_block(value_to_block(&block308));
 
-            let context_future_320 = get_context(accounts(0), 320 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 320);
+            let context_future_320 =
+                get_context(accounts(0), 320 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 320);
             testing_env!(context_future_320.build());
 
-            // TODO uncomment when add_light_client_block will do something
-            assert!(encode_hex(&bridge.block_hashes(308).unwrap()) == "92c231eb7719d7cc7598e7bc614bbd0eb0be3729b47a36ede4a66033aa5051d9");
+            assert!(
+                encode_hex(&bridge.block_hashes(308).unwrap())
+                    == "92c231eb7719d7cc7598e7bc614bbd0eb0be3729b47a36ede4a66033aa5051d9"
+            );
 
-            for key_value in approvals_after_next.unwrap() {
-                if !key_value.is_null() {
-                    let key = String::from(key_value.as_str().unwrap());
-
-                    // TODO uncomment when check_block_producer_signature_in_head will exist and do something
-                    //assert!(bridge.check_block_producer_signature_in_head(key))
+            let mut i = 0;
+            for key in approvals_after_next.unwrap() {
+                if !key.is_null() {
+                    assert!(bridge.check_block_producer_signature_in_head(i))
                 }
+                i += 1;
             }
 
             assert!(true)

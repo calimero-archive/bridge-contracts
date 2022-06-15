@@ -1,13 +1,16 @@
 //! This contract is a minimal test interface for NEAR light client
 
 extern crate near_sdk;
+pub mod errors;
+pub mod signature;
 pub mod utils;
 
+pub use crate::signature::{PublicKey, Signature};
 pub use crate::utils::{hashes, u128_dec_format};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{env, near_bindgen, require, PanicOnDefault, AccountId};
 use near_sdk::collections::LookupMap;
+use near_sdk::serde::{Deserialize, Serialize};
+use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
 
 // Current assumptions is that private shard only run max 100 block producers
 const MAX_BLOCK_PRODUCERS: u32 = 100;
@@ -66,19 +69,11 @@ impl Block {
     }
 }
 
-// TODO: Signature type with related methods should be take from here:
-// https://github.com/near/nearcore/blob/master/core/crypto/src/signature.rs
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct Signature {
-    pub signature: String,
-}
-
 #[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Validator {
     pub account_id: String,
-    pub public_key: String,
+    pub public_key: PublicKey,
     #[serde(with = "u128_dec_format")]
     pub stake: u128,
     pub is_chunk_only: bool,
@@ -129,7 +124,7 @@ pub struct OptionalBlockProducers {}
 #[serde(crate = "near_sdk::serde")]
 pub struct Epoch {
     epoch_id: Hash,
-    keys: Vec<String>,
+    keys: Vec<PublicKey>,
     stake_threshold: u128,
     stakes: Vec<u128>,
 }
@@ -164,7 +159,6 @@ pub struct LightClient {
 
 #[near_bindgen]
 impl LightClient {
-
     #[init]
     pub fn new(lock_duration: u64, replace_duration: u64) -> Self {
         Self {
@@ -185,7 +179,7 @@ impl LightClient {
             replace_duration: replace_duration,
             current_epoch_index: 0,
             block_hashes: LookupMap::new(b"h"),
-            block_merkle_roots: LookupMap::new(b"m")
+            block_merkle_roots: LookupMap::new(b"m"),
         }
     }
 
@@ -208,7 +202,7 @@ impl LightClient {
             });
         }
         for _ in 0..MAX_BLOCK_PRODUCERS {
-            self.untrusted_signatures.push(Signature{signature: "".to_string()});
+            self.untrusted_signatures.push(Default::default());
         }
         LightClient::set_block_producers(initial_validators, &mut self.epochs[0]);
     }
@@ -230,15 +224,20 @@ impl LightClient {
         self.epochs[1].epoch_id = block.inner_lite.next_epoch_id;
         self.block_hashes
             .insert(&block.inner_lite.height, &block.hash);
-        self.block_merkle_roots
-            .insert(&block.inner_lite.height, &block.inner_lite.block_merkle_root);
+        self.block_merkle_roots.insert(
+            &block.inner_lite.height,
+            &block.inner_lite.block_merkle_root,
+        );
         LightClient::set_block_producers(block.next_bps.unwrap(), &mut self.epochs[1]);
     }
 
     pub fn block_hashes(&self, height: u64) -> Option<Hash> {
         if let Some(res) = &self.block_hashes.get(&height) {
             return Some(*res);
-        } else if env::block_timestamp() >= self.last_valid_at && self.last_valid_at != 0 && height == self.untrusted_height {
+        } else if env::block_timestamp() >= self.last_valid_at
+            && self.last_valid_at != 0
+            && height == self.untrusted_height
+        {
             return Some(self.untrusted_hash);
         }
         return None;
@@ -249,7 +248,10 @@ impl LightClient {
 
         // Commit the previous block, or make sure that it is OK to replace it.
         if env::block_timestamp() < self.last_valid_at {
-            require!(block.inner_lite.timestamp >= self.untrusted_timestamp + self.replace_duration, "Can only replace with a sufficiently newer block");
+            require!(
+                block.inner_lite.timestamp >= self.untrusted_timestamp + self.replace_duration,
+                "Can only replace with a sufficiently newer block"
+            );
         } else if self.last_valid_at != 0 {
             self.current_height = self.untrusted_height;
             if self.untrusted_next_epoch {
@@ -257,26 +259,43 @@ impl LightClient {
             }
             self.last_valid_at = 0;
 
-            self.block_hashes.insert(&self.current_height, &self.untrusted_hash);
-            self.block_merkle_roots.insert(&self.current_height, &self.untrusted_merkle_root);
+            self.block_hashes
+                .insert(&self.current_height, &self.untrusted_hash);
+            self.block_merkle_roots
+                .insert(&self.current_height, &self.untrusted_merkle_root);
         }
 
         // Check that the new block's height is greater than the current one's.
-        require!(block.inner_lite.height > self.current_height, "New block must have higher height");
+        require!(
+            block.inner_lite.height > self.current_height,
+            "New block must have higher height"
+        );
 
-        let from_next_epoch = if block.inner_lite.epoch_id == self.epochs[self.current_epoch_index].epoch_id { false }
-        else if block.inner_lite.epoch_id == self.epochs[(self.current_epoch_index + 1) % NUM_OF_EPOCHS].epoch_id { true }
-        else {
-            // in this case do a revert
-            require!(false, "Epoch id of the block is not valid");
-            false
-        };
+        let from_next_epoch =
+            if block.inner_lite.epoch_id == self.epochs[self.current_epoch_index].epoch_id {
+                false
+            } else if block.inner_lite.epoch_id
+                == self.epochs[(self.current_epoch_index + 1) % NUM_OF_EPOCHS].epoch_id
+            {
+                true
+            } else {
+                // in this case do a revert
+                require!(false, "Epoch id of the block is not valid");
+                false
+            };
 
         // Check that the new block is signed by more than 2/3 of the validators.
-        let this_epoch = if from_next_epoch { &self.epochs[(self.current_epoch_index + 1) % NUM_OF_EPOCHS] } else { &self.epochs[self.current_epoch_index] };
+        let this_epoch = if from_next_epoch {
+            &self.epochs[(self.current_epoch_index + 1) % NUM_OF_EPOCHS]
+        } else {
+            &self.epochs[self.current_epoch_index]
+        };
 
         // Last block in the epoch might contain extra approvals that light client can ignore.
-        require!(block.approvals_after_next.len() >= this_epoch.keys.len(), "Approval list is too short");
+        require!(
+            block.approvals_after_next.len() >= this_epoch.keys.len(),
+            "Approval list is too short"
+        );
 
         // The sum of uint128 values cannot overflow.
         let mut voted_for: u128 = 0;
@@ -307,10 +326,10 @@ impl LightClient {
         let mut i = 0;
         while i < this_epoch.keys.len() {
             if let Some(approval) = block.approvals_after_next[i].clone() {
-                signature_set |= 1 << 1;
+                signature_set |= 1 << i;
                 self.untrusted_signatures[i] = approval;
             }
-            i = i + 1;
+            i += 1;
         }
         self.untrusted_signature_set = signature_set;
         self.untrusted_next_epoch = from_next_epoch;
@@ -321,6 +340,27 @@ impl LightClient {
         }
         self.last_submitter = env::predecessor_account_id();
         self.last_valid_at = env::block_timestamp() + self.lock_duration;
+    }
+
+    pub fn check_block_producer_signature_in_head(&self, signature_index: usize) -> bool {
+        require!(
+            self.untrusted_signature_set & (1 << signature_index) != 0,
+            "No such signature"
+        );
+        let untrusted_epoch = &self.epochs[if self.untrusted_next_epoch {
+            (self.current_epoch_index + 1) % NUM_OF_EPOCHS
+        } else {
+            self.current_epoch_index
+        }];
+        let signature = &self.untrusted_signatures[signature_index];
+        let message = [
+            &[0],
+            &self.untrusted_next_hash as &[_],
+            &crate::utils::swap_bytes8(self.untrusted_height + 2).to_be_bytes() as &[_],
+        ]
+        .concat();
+
+        return signature.verify(&message, &untrusted_epoch.keys[signature_index]);
     }
 
     fn set_block_producers(block_producers: Vec<Validator>, epoch: &mut Epoch) {
