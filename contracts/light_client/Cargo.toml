@@ -8,6 +8,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+admin-controlled = { path = "../admin_controlled" }
 near-sdk = "4.0.0"
 ed25519-dalek = "1"
 getrandom = { version = "0.2", features = ["js"] }

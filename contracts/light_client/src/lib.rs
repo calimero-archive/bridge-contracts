@@ -6,6 +6,7 @@ pub mod signature;
 pub mod utils;
 
 pub use crate::signature::{PublicKey, Signature};
+use admin_controlled::Mask;
 pub use crate::utils::{hashes, u128_dec_format};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
@@ -155,7 +156,11 @@ pub struct LightClient {
     current_epoch_index: usize,
     block_hashes: LookupMap<u64, Hash>,
     block_merkle_roots: LookupMap<u64, Hash>,
+    // Mask determining all paused functions
+    paused: Mask,
 }
+
+const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
 
 #[near_bindgen]
 impl LightClient {
@@ -180,6 +185,7 @@ impl LightClient {
             current_epoch_index: 0,
             block_hashes: LookupMap::new(b"h"),
             block_merkle_roots: LookupMap::new(b"m"),
+            paused: Mask::default(),
         }
     }
 
@@ -189,6 +195,7 @@ impl LightClient {
 
     /// The first part of initialization -- setting the validators of the current epoch.
     pub fn init_with_validators(&mut self, initial_validators: Vec<Validator>) {
+        near_sdk::assert_self();
         require!(
             !self.is_initialized() && self.epochs.is_empty(),
             "Wrong initialization stage"
@@ -209,6 +216,7 @@ impl LightClient {
 
     /// The second part of the initialization
     pub fn init_with_block(&mut self, block: Block) {
+        near_sdk::assert_self();
         require!(
             !self.is_initialized() && !self.epochs.is_empty(),
             "Wrong initialization stage"
@@ -245,6 +253,7 @@ impl LightClient {
 
     pub fn add_light_client_block(&mut self, block: Block) {
         require!(self.is_initialized(), "Contract is not initialized");
+        self.assert_not_paused(PAUSE_ADD_BLOCK_HEADER);
 
         // Commit the previous block, or make sure that it is OK to replace it.
         if env::block_timestamp() < self.last_valid_at {
@@ -378,3 +387,5 @@ impl LightClient {
         epoch.stake_threshold = (total_stake * 2) / 3;
     }
 }
+
+admin_controlled::impl_admin_controlled!(LightClient, paused);
