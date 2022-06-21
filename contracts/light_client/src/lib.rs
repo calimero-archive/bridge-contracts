@@ -22,56 +22,12 @@ pub type Hash = [u8; 32];
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Block {
-    prev_block_hash: Hash,
-    next_block_inner_hash: Hash,
-    inner_lite: BlockHeaderInnerLite,
-    inner_rest_hash: Hash,
-    next_bps: Option<Vec<Validator>>,
-    approvals_after_next: Vec<Option<Signature>>,
-    hash: Hash,
-    next_hash: Hash,
-}
-
-impl Block {
-    pub fn new(
-        prev_block_hash: String,
-        next_block_inner_hash: String,
-        inner_lite: BlockHeaderInnerLite,
-        inner_rest_hash: String,
-        next_bps: Option<Vec<Validator>>,
-        approvals_after_next: Vec<Option<Signature>>,
-    ) -> Self {
-        let inner_rest_hash_bytes = hashes::deserialize_hash(&inner_rest_hash).unwrap();
-        let prev_block_hash_bytes = hashes::deserialize_hash(&prev_block_hash).unwrap();
-        let inner_lite_hash_bytes: Hash =
-            env::sha256(&inner_lite.try_to_vec().expect("Failed to serialize"))
-                .try_into()
-                .unwrap();
-
-        let hash = hashes::combine_hash3(
-            inner_lite_hash_bytes,
-            inner_rest_hash_bytes,
-            prev_block_hash_bytes,
-        );
-
-        let next_block_inner_hash_bytes = hashes::deserialize_hash(&next_block_inner_hash).unwrap();
-        let next_hash = hashes::combine_hash2(next_block_inner_hash_bytes, hash);
-
-        // TODO remove when tests are expanded to actually test this
-        let new_hash = LightClient::hash_of_block_producers(next_bps.as_ref().unwrap());
-        println!("next_bps_hash: {:?}", new_hash);
-
-        Self {
-            prev_block_hash: prev_block_hash_bytes,
-            next_block_inner_hash: next_block_inner_hash_bytes,
-            inner_lite: inner_lite,
-            inner_rest_hash: inner_rest_hash_bytes,
-            next_bps: next_bps,
-            approvals_after_next: approvals_after_next,
-            hash: hash,
-            next_hash: next_hash,
-        }
-    }
+    pub prev_block_hash: Hash,
+    pub next_block_inner_hash: Hash,
+    pub inner_lite: BlockHeaderInnerLite,
+    pub inner_rest_hash: Hash,
+    pub next_bps: Option<Vec<Validator>>,
+    pub approvals_after_next: Vec<Option<Signature>>,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -155,38 +111,14 @@ pub struct ValidatorV2 {
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BlockHeaderInnerLite {
-    height: u64,    // Height of this block since the genesis block (height 0).
-    epoch_id: Hash, // Epoch start hash of this block's epoch. Used for retrieving validator information
-    next_epoch_id: Hash,
-    prev_state_root: Hash, // Root hash of the state at the previous block.
-    outcome_root: Hash,    // Root of the outcomes of transactions and receipts.
-    timestamp: u64,        // Timestamp at which the block was built.
-    next_bp_hash: Hash,    // Hash of the next epoch block producers set
-    block_merkle_root: Hash,
-}
-
-impl BlockHeaderInnerLite {
-    pub fn new(
-        height: u64,
-        epoch_id: String,
-        next_epoch_id: String,
-        prev_state_root: String,
-        outcome_root: String,
-        timestamp: String,
-        next_bp_hash: String,
-        block_merkle_root: String,
-    ) -> Self {
-        Self {
-            height: height,
-            epoch_id: hashes::deserialize_hash(&epoch_id).unwrap(),
-            next_epoch_id: hashes::deserialize_hash(&next_epoch_id).unwrap(),
-            prev_state_root: hashes::deserialize_hash(&prev_state_root).unwrap(),
-            outcome_root: hashes::deserialize_hash(&outcome_root).unwrap(),
-            timestamp: timestamp.parse().unwrap(),
-            next_bp_hash: hashes::deserialize_hash(&next_bp_hash).unwrap(),
-            block_merkle_root: hashes::deserialize_hash(&block_merkle_root).unwrap(),
-        }
-    }
+    pub height: u64,    // Height of this block since the genesis block (height 0).
+    pub epoch_id: Hash, // Epoch start hash of this block's epoch. Used for retrieving validator information
+    pub next_epoch_id: Hash,
+    pub prev_state_root: Hash, // Root hash of the state at the previous block.
+    pub outcome_root: Hash,    // Root of the outcomes of transactions and receipts.
+    pub timestamp: u64,        // Timestamp at which the block was built.
+    pub next_bp_hash: Hash,    // Hash of the next epoch block producers set
+    pub block_merkle_root: Hash,
 }
 
 #[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
@@ -303,7 +235,7 @@ impl LightClient {
         self.epochs[0].epoch_id = block.inner_lite.epoch_id;
         self.epochs[1].epoch_id = block.inner_lite.next_epoch_id;
         self.block_hashes
-            .insert(&block.inner_lite.height, &block.hash);
+            .insert(&block.inner_lite.height, &LightClient::hash_of(&block));
         self.block_merkle_roots.insert(
             &block.inner_lite.height,
             &block.inner_lite.block_merkle_root,
@@ -399,9 +331,10 @@ impl LightClient {
 
         self.untrusted_height = block.inner_lite.height;
         self.untrusted_timestamp = block.inner_lite.timestamp;
-        self.untrusted_hash = block.hash;
+        let hash_of_block = LightClient::hash_of(&block);
+        self.untrusted_hash = hash_of_block;
         self.untrusted_merkle_root = block.inner_lite.block_merkle_root;
-        self.untrusted_next_hash = block.next_hash;
+        self.untrusted_next_hash = hashes::combine_hash2(block.next_block_inner_hash, hash_of_block);
 
         let mut signature_set: u128 = 0;
         let mut i = 0;
@@ -463,6 +396,19 @@ impl LightClient {
             epoch.stakes.push(*block_producer.stake());
         }
         epoch.stake_threshold = (total_stake * 2) / 3;
+    }
+
+    fn hash_of(block: &Block) -> Hash {
+        let inner_lite_hash_bytes: Hash =
+            env::sha256( &block.inner_lite.try_to_vec().expect("Failed to serialize"))
+                .try_into()
+                .unwrap();
+        let hash = hashes::combine_hash3(
+            inner_lite_hash_bytes,
+            block.inner_rest_hash,
+            block.prev_block_hash,
+        );
+        hash
     }
 }
 

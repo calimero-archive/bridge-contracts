@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod light_client {
     mod test {
-        use light_client::hashes::encode_hex;
+        use light_client::hashes::{encode_hex, deserialize_hash};
         use light_client::{
             Block, BlockHeaderInnerLite, LightClient, PublicKey, Signature, Validator,
         };
@@ -84,11 +84,59 @@ mod light_client {
             return ret;
         }
 
+        pub fn block_from_tests(
+            prev_block_hash: String,
+            next_block_inner_hash: String,
+            inner_lite: BlockHeaderInnerLite,
+            inner_rest_hash: String,
+            next_bps: Option<Vec<Validator>>,
+            approvals_after_next: Vec<Option<Signature>>,
+        ) -> Block {
+            let inner_rest_hash_bytes = deserialize_hash(&inner_rest_hash).unwrap();
+            let prev_block_hash_bytes = deserialize_hash(&prev_block_hash).unwrap();
+            let next_block_inner_hash_bytes = deserialize_hash(&next_block_inner_hash).unwrap();
+
+            // TODO remove when tests are expanded to actually test this
+            //let new_hash = LightClient::hash_of_block_producers(next_bps.as_ref().unwrap());
+            //println!("next_bps_hash: {:?}", new_hash);
+
+            Block {
+                prev_block_hash: prev_block_hash_bytes,
+                next_block_inner_hash: next_block_inner_hash_bytes,
+                inner_lite: inner_lite,
+                inner_rest_hash: inner_rest_hash_bytes,
+                next_bps: next_bps,
+                approvals_after_next: approvals_after_next,
+            }
+        }
+
+        pub fn block_header_inner_lite_from_tests(
+            height: u64,
+            epoch_id: String,
+            next_epoch_id: String,
+            prev_state_root: String,
+            outcome_root: String,
+            timestamp: String,
+            next_bp_hash: String,
+            block_merkle_root: String,
+        ) -> BlockHeaderInnerLite {
+            BlockHeaderInnerLite {
+                height: height,
+                epoch_id: deserialize_hash(&epoch_id).unwrap(),
+                next_epoch_id: deserialize_hash(&next_epoch_id).unwrap(),
+                prev_state_root: deserialize_hash(&prev_state_root).unwrap(),
+                outcome_root: deserialize_hash(&outcome_root).unwrap(),
+                timestamp: timestamp.parse().unwrap(),
+                next_bp_hash: deserialize_hash(&next_bp_hash).unwrap(),
+                block_merkle_root: deserialize_hash(&block_merkle_root).unwrap(),
+            }
+        }
+
         fn value_to_block(block_value: &Value) -> Block {
-            Block::new(
+            block_from_tests(
                 String::from(block_value["prev_block_hash"].as_str().unwrap()),
                 String::from(block_value["next_block_inner_hash"].as_str().unwrap()),
-                BlockHeaderInnerLite::new(
+                block_header_inner_lite_from_tests(
                     block_value["inner_lite"]["height"].as_u64().unwrap(),
                     String::from(block_value["inner_lite"]["epoch_id"].as_str().unwrap()),
                     String::from(block_value["inner_lite"]["next_epoch_id"].as_str().unwrap()),
