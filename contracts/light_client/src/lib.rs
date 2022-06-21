@@ -6,8 +6,8 @@ pub mod signature;
 pub mod utils;
 
 pub use crate::signature::{PublicKey, Signature};
-use admin_controlled::Mask;
 pub use crate::utils::{hashes, u128_dec_format};
+use admin_controlled::Mask;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ const NUM_OF_EPOCHS: usize = 3;
 
 pub type Hash = [u8; 32];
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Block {
     prev_block_hash: Hash,
@@ -57,6 +57,10 @@ impl Block {
         let next_block_inner_hash_bytes = hashes::deserialize_hash(&next_block_inner_hash).unwrap();
         let next_hash = hashes::combine_hash2(next_block_inner_hash_bytes, hash);
 
+        // TODO remove when tests are expanded to actually test this
+        let new_hash = LightClient::hash_of_block_producers(next_bps.as_ref().unwrap());
+        println!("next_bps_hash: {:?}", new_hash);
+
         Self {
             prev_block_hash: prev_block_hash_bytes,
             next_block_inner_hash: next_block_inner_hash_bytes,
@@ -70,9 +74,77 @@ impl Block {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
-pub struct Validator {
+pub enum Validator {
+    V1(ValidatorV1),
+    V2(ValidatorV2),
+}
+
+impl Validator {
+    pub fn new_v1(account_id: String, public_key: PublicKey, stake: u128) -> Self {
+        Self::V1(ValidatorV1 {
+            account_id,
+            public_key,
+            stake,
+        })
+    }
+
+    pub fn new_v2(
+        account_id: String,
+        public_key: PublicKey,
+        stake: u128,
+        is_chunk_only: bool,
+    ) -> Self {
+        Self::V2(ValidatorV2 {
+            account_id,
+            public_key,
+            stake,
+            is_chunk_only,
+        })
+    }
+
+    pub fn account_id(&self) -> &String {
+        match self {
+            Self::V1(v1) => &v1.account_id,
+            Self::V2(v2) => &v2.account_id,
+        }
+    }
+
+    pub fn public_key(&self) -> &PublicKey {
+        match self {
+            Self::V1(v1) => &v1.public_key,
+            Self::V2(v2) => &v2.public_key,
+        }
+    }
+
+    pub fn stake(&self) -> &u128 {
+        match self {
+            Self::V1(v1) => &v1.stake,
+            Self::V2(v2) => &v2.stake,
+        }
+    }
+
+    pub fn is_chunk_only(&self) -> &bool {
+        match self {
+            Self::V1(_v1) => &false,
+            Self::V2(v2) => &v2.is_chunk_only,
+        }
+    }
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(crate = "near_sdk::serde")]
+pub struct ValidatorV1 {
+    pub account_id: String,
+    pub public_key: PublicKey,
+    #[serde(with = "u128_dec_format")]
+    pub stake: u128,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(crate = "near_sdk::serde")]
+pub struct ValidatorV2 {
     pub account_id: String,
     pub public_key: PublicKey,
     #[serde(with = "u128_dec_format")]
@@ -80,7 +152,7 @@ pub struct Validator {
     pub is_chunk_only: bool,
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct BlockHeaderInnerLite {
     height: u64,    // Height of this block since the genesis block (height 0).
@@ -117,11 +189,11 @@ impl BlockHeaderInnerLite {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct OptionalBlockProducers {}
 
-#[derive(BorshDeserialize, BorshSerialize, Clone, Deserialize, Serialize)]
+#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct Epoch {
     epoch_id: Hash,
@@ -318,11 +390,11 @@ impl LightClient {
         // If the block is from the next epoch, make sure that next_bps is supplied and has a correct hash.
         if from_next_epoch {
             require!(block.next_bps.is_some(), "Next next_bps should not be None");
-            // TODO: Calculate hash of next block producers
-            // require(
-            //     HashOf(block.next_bps) == nearBlock.inner_lite.next_bp_hash,
-            //     "Hash of block producers does not match"
-            // );
+            require!(
+                LightClient::hash_of_block_producers(block.next_bps.as_ref().unwrap())
+                    == block.inner_lite.next_bp_hash,
+                "Hash of block producers does not match"
+            );
         }
 
         self.untrusted_height = block.inner_lite.height;
@@ -372,6 +444,12 @@ impl LightClient {
         return signature.verify(&message, &untrusted_epoch.keys[signature_index]);
     }
 
+    fn hash_of_block_producers(block_producers: &Vec<Validator>) -> Hash {
+        return env::sha256(&block_producers.try_to_vec().expect("Failed to serialize"))
+            .try_into()
+            .unwrap();
+    }
+
     fn set_block_producers(block_producers: Vec<Validator>, epoch: &mut Epoch) {
         require!(
             (block_producers.len() as u32) <= MAX_BLOCK_PRODUCERS,
@@ -380,9 +458,9 @@ impl LightClient {
 
         let mut total_stake: u128 = 0;
         for block_producer in &block_producers {
-            epoch.keys.push(block_producer.public_key.clone());
-            total_stake += block_producer.stake;
-            epoch.stakes.push(block_producer.stake);
+            epoch.keys.push(block_producer.public_key().clone());
+            total_stake += *block_producer.stake();
+            epoch.stakes.push(*block_producer.stake());
         }
         epoch.stake_threshold = (total_stake * 2) / 3;
     }

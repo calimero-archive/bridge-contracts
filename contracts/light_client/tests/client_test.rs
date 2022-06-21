@@ -2,7 +2,9 @@
 mod light_client {
     mod test {
         use light_client::hashes::encode_hex;
-        use light_client::{Block, BlockHeaderInnerLite, LightClient, PublicKey, Signature, Validator};
+        use light_client::{
+            Block, BlockHeaderInnerLite, LightClient, PublicKey, Signature, Validator,
+        };
         use near_sdk::serde::de::DeserializeOwned;
         use near_sdk::serde_json::Value;
         use near_sdk::test_utils::{accounts, VMContextBuilder};
@@ -46,12 +48,24 @@ mod light_client {
         fn array_to_validators(validators: Option<&Vec<Value>>) -> Vec<Validator> {
             let mut ret = Vec::<Validator>::new();
             for item in validators.unwrap() {
-                ret.push(Validator {
-                    account_id: String::from(item["account_id"].as_str().unwrap()),
-                    public_key: PublicKey::from_str(&String::from(item["public_key"].as_str().unwrap())).unwrap(),
-                    stake: item["stake"].as_str().unwrap().parse::<u128>().unwrap(),
-                    is_chunk_only: false,
-                });
+                let is_chunk_only = item["is_chunk_only"].as_bool();
+                let is_v1 = is_chunk_only.is_none();
+                if is_v1 {
+                    ret.push(Validator::new_v1(
+                        String::from(item["account_id"].as_str().unwrap()),
+                        PublicKey::from_str(&String::from(item["public_key"].as_str().unwrap()))
+                            .unwrap(),
+                        item["stake"].as_str().unwrap().parse::<u128>().unwrap(),
+                    ));
+                } else {
+                    ret.push(Validator::new_v2(
+                        String::from(item["account_id"].as_str().unwrap()),
+                        PublicKey::from_str(&String::from(item["public_key"].as_str().unwrap()))
+                            .unwrap(),
+                        item["stake"].as_str().unwrap().parse::<u128>().unwrap(),
+                        is_chunk_only.unwrap(),
+                    ));
+                }
             }
 
             return ret;
