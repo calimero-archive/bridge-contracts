@@ -1,5 +1,5 @@
 [package]
-name = "light_client"
+name = "prover"
 version = "0.1.0"
 authors = ["Calimero <info@calimero.network>"]
 edition = "2021"
@@ -12,6 +12,14 @@ admin_controlled = { path = "../admin_controlled" }
 utils = { path = "../utils" }
 types = { path = "../types" }
 near-sdk = "4.0.0"
+ed25519-dalek = "1"
+getrandom = { version = "0.2", features = ["custom"] }
+base64 = "0.13"
+libsecp256k1 = "0.7"
+primitive-types = "0.10"
+thiserror = "1"
+
+[dev-dependencies]
 
 [profile.release]
 codegen-units = 1

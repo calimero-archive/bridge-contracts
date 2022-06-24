@@ -12,6 +12,7 @@ use near_sdk::{bs58, serde};
 use primitive_types::U256;
 use libsecp256k1::Message;
 
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 pub enum KeyType {

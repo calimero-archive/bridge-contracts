@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod light_client {
     mod test {
-        use light_client::hashes::{encode_hex, deserialize_hash};
-        use light_client::{
-            Block, BlockHeaderInnerLite, LightClient, PublicKey, Signature, Validator,
+        use utils::hashes::{encode_hex, deserialize_hash};
+        use light_client::LightClient;
+        use types::{
+            Block, BlockHeaderInnerLite, PublicKey, Signature, Validator,
         };
         use near_sdk::serde::de::DeserializeOwned;
         use near_sdk::serde_json::Value;

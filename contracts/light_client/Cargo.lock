@@ -9,7 +9,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
 
 [[package]]
-name = "admin-controlled"
+name = "admin_controlled"
 version = "0.1.0"
 dependencies = [
  "near-sdk",
@@ -180,6 +180,13 @@ checksum = "d27dae93fe7b1e0424dc57179ac396908c26b035a87234809f5c4dfd1b47dc80"
 dependencies = [
  "cipher",
  "ppv-lite86",
+]
+
+[[package]]
+name = "calimero_utils"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
 ]
 
 [[package]]
@@ -520,19 +527,10 @@ dependencies = [
 name = "light_client"
 version = "0.1.0"
 dependencies = [
- "admin-controlled",
- "derive_more",
- "ed25519-dalek",
- "getrandom 0.2.7",
- "libsecp256k1",
+ "admin_controlled",
+ "calimero_utils",
  "near-sdk",
- "once_cell",
- "primitive-types",
- "rand 0.7.3",
- "rand 0.8.5",
- "rand_core 0.5.1",
- "rand_core 0.6.3",
- "thiserror",
+ "types",
 ]
 
 [[package]]
@@ -1188,6 +1186,20 @@ name = "typenum"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
+
+[[package]]
+name = "types"
+version = "0.1.0"
+dependencies = [
+ "calimero_utils",
+ "derive_more",
+ "ed25519-dalek",
+ "getrandom 0.2.7",
+ "libsecp256k1",
+ "near-sdk",
+ "primitive-types",
+ "thiserror",
+]
 
 [[package]]
 name = "uint"

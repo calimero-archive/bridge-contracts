@@ -1,3 +1,14 @@
+pub type Hash = [u8; 32];
+
+pub trait Hashable {
+    fn hash(&self) -> Hash;
+}
+
+pub fn swap_bytes4(v: u32) -> u32 {
+    let r = ((v & 0x00ff00ff) << 8) | ((v & 0xff00ff00) >> 8);
+    return (r << 16) | (r >> 16);
+}
+
 pub fn swap_bytes8(v: u64) -> u64 {
     let mut r = ((v & 0x00ff00ff00ff00ff) << 8) | ((v & 0xff00ff00ff00ff00) >> 8);
     r = ((r & 0x0000ffff0000ffff) << 16) | ((r & 0xffff0000ffff0000) >> 16);
@@ -58,5 +69,12 @@ pub mod hashes {
             write!(&mut s, "{:02x}", b).unwrap();
         }
         s
+    }
+
+    pub fn decode_hex(chars: &str) -> Vec<u8> {
+        (0..chars.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&chars[i..i + 2], 16).unwrap())
+            .collect()
     }
 }

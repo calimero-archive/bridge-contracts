@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod signature {
-    use light_client::signature::{KeyType, PublicKey, SecretKey, Signature};
+    use types::signature::{KeyType, PublicKey, SecretKey, Signature};
 
     trait FromRandom {
         fn from_random(key_type: KeyType) -> Self;
@@ -13,7 +13,7 @@ mod signature {
     impl FromSeed for PublicKey {
         fn from_seed(key_type: KeyType, seed: &str) -> Self {
             use crate::signature::test::ed25519_key_pair_from_seed;
-            use light_client::signature::ED25519PublicKey;
+            use types::signature::ED25519PublicKey;
             match key_type {
                 KeyType::ED25519 => {
                     let keypair = ed25519_key_pair_from_seed(seed);
@@ -26,7 +26,7 @@ mod signature {
 
     impl FromRandom for SecretKey {
         fn from_random(key_type: KeyType) -> SecretKey {
-            use light_client::signature::ED25519SecretKey;
+            use types::signature::ED25519SecretKey;
 
             match key_type {
                 KeyType::ED25519 => {
@@ -44,7 +44,7 @@ mod signature {
         fn from_seed(key_type: KeyType, seed: &str) -> Self {
             use crate::signature::test::ed25519_key_pair_from_seed;
             use crate::signature::test::secp256k1_secret_key_from_seed;
-            use light_client::signature::ED25519SecretKey;
+            use types::signature::ED25519SecretKey;
             match key_type {
                 KeyType::ED25519 => {
                     let keypair = ed25519_key_pair_from_seed(seed);
@@ -59,7 +59,7 @@ mod signature {
         use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
         use near_sdk::serde_json;
 
-        use light_client::signature::{KeyType, PublicKey, SecretKey};
+        use types::signature::{KeyType, PublicKey, SecretKey};
 
         pub fn ed25519_key_pair_from_seed(seed: &str) -> ed25519_dalek::Keypair {
             let seed_bytes = seed.as_bytes();
