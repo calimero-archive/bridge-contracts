@@ -1,14 +1,1 @@
-https://docs.near.org/docs/develop/contracts/rust/intro#deploying-the-smart-contract
 
-near view dev-1645449726636-34382152096877 pending_requests
-
-near view dev-1645449726636-34382152096877 executing_requests
-
-near call dev-1645449726636-34382152096877 call_function --accountId chefsale.testnet --args '{"req": {"contract_name": "aaa", "method_name": "foo", "parameters": "bar", "callback_method": "clo"}}'
-
-near call dev-1645449726636-34382152096877 execute_pending_request --accountId chefsale.testnet
-
-near call dev-1645449726636-34382152096877 execute_function_callback --accountId chefsale.testnet --args '{"res": {"response": {"return_value": "", "status_code": 200}, "id": ""}}'
-
-Private shard:
-near view relayer.calimero executing_requests --networkId private_shard --nodeUrl http://34.111.18.35
