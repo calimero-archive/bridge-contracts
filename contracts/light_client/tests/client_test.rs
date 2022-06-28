@@ -201,6 +201,34 @@ mod light_client {
         }
 
         #[test]
+        fn check_signature() {
+            let mut bridge = init();
+            let validators = file_as_json::<Value>("validators.json").unwrap();
+            let block93439858 = file_as_json::<Value>("block_93439858.json").unwrap();
+            let block93447397 = file_as_json::<Value>("block_93447397.json").unwrap();
+            let context_93439858 = get_context(accounts(0), 93439858 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 93439858);
+            testing_env!(context_93439858.build());
+            bridge.init_with_validators(array_to_validators(validators.as_array()));
+            bridge.init_with_block(value_to_block(&block93439858));
+
+            let context_93447397 = get_context(accounts(0), 93447397 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 93447397);
+            testing_env!(context_93447397.build());
+            bridge.add_light_client_block(value_to_block(&block93447397));
+
+
+            let mut i = 0;
+            let approvals_after_next = block93447397["approvals_after_next"].as_array();
+            for key in approvals_after_next.unwrap() {
+                if !key.is_null() {
+                    assert!(bridge.check_block_producer_signature_in_head(i))
+                }
+                i += 1;
+            }
+
+            assert!(true);
+        }
+
+        #[test]
         fn adding_block_in_first_epoch() {
             let mut bridge = init();
             // Get "initial validators" that will produce block 304

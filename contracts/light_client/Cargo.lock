@@ -183,13 +183,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "calimero_utils"
-version = "0.1.0"
-dependencies = [
- "near-sdk",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -528,9 +521,9 @@ name = "light_client"
 version = "0.1.0"
 dependencies = [
  "admin_controlled",
- "calimero_utils",
  "near-sdk",
  "types",
+ "utils",
 ]
 
 [[package]]
@@ -1191,7 +1184,6 @@ checksum = "dcf81ac59edc17cc8697ff311e8f5ef2d99fcbd9817b34cec66f90b6c3dfd987"
 name = "types"
 version = "0.1.0"
 dependencies = [
- "calimero_utils",
  "derive_more",
  "ed25519-dalek",
  "getrandom 0.2.7",
@@ -1199,6 +1191,7 @@ dependencies = [
  "near-sdk",
  "primitive-types",
  "thiserror",
+ "utils",
 ]
 
 [[package]]
@@ -1224,6 +1217,13 @@ name = "unicode-xid"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "957e51f3646910546462e67d5f7599b9e4fb8acdd304b087a6494730f9eebf04"
+
+[[package]]
+name = "utils"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
+]
 
 [[package]]
 name = "version_check"

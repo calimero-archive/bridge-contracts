@@ -229,14 +229,13 @@ impl LightClient {
         self.untrusted_next_hash =
             hashes::combine_hash2(block.next_block_inner_hash, hash_of_block);
 
+        let keys_len = this_epoch.keys.len();
         let mut signature_set: u128 = 0;
-        let mut i = 0;
-        while i < this_epoch.keys.len() {
+        for i in 0..keys_len {
             if let Some(approval) = block.approvals_after_next[i].clone() {
                 signature_set |= 1 << i;
                 self.untrusted_signatures[i] = approval;
             }
-            i += 1;
         }
         self.untrusted_signature_set = signature_set;
         self.untrusted_next_epoch = from_next_epoch;
@@ -247,6 +246,12 @@ impl LightClient {
         }
         self.last_submitter = env::predecessor_account_id();
         self.last_valid_at = env::block_timestamp() + self.lock_duration;
+
+        for i in 0..keys_len {
+            if self.untrusted_signature_set & (1 << i) != 0 {
+                self.check_block_producer_signature_in_head(i);
+            }
+        }
     }
 
     pub fn check_block_producer_signature_in_head(&self, signature_index: usize) -> bool {
@@ -281,6 +286,9 @@ impl LightClient {
             (block_producers.len() as u32) <= MAX_BLOCK_PRODUCERS,
             "It is not expected having that many block producers for the provided block"
         );
+
+        epoch.keys = Vec::new();
+        epoch.stakes = Vec::new();
 
         let mut total_stake: u128 = 0;
         for block_producer in &block_producers {
