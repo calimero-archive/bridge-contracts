@@ -32,7 +32,7 @@
       "next_epoch_id":"ABcfZDpvJb2z14Kg5Xwt9ucwQYdtXguQhBZrRhQnX94A",
       "prev_state_root":"4sLNs8wnMTciYDiz2cJFYHGCgE8UWSPiT2ejp4Pidtzt",
       "outcome_root":"6erBQFcckMkm9r5UnyfzpDuhhDYnKeomcK94oPjRWZ7b",
-      "timestamp":"1593378592795392000",
+      "timestamp_nanosec":"1593378592795392000",
       "next_bp_hash":"FuHdRu2F7F1u79Xc1RnGkF24haAAEJRywbJznVuZpPVu",
       "block_merkle_root":"EjsmRcH8Xnk6nCRAGz6Mqf4zBQvALrVDuonvSi8BTmH5"
     }

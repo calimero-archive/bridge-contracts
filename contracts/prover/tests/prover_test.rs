@@ -21,6 +21,7 @@ mod prover {
         use utils::Hash;
         use near_sdk::serde::de::DeserializeOwned;
         use near_sdk::serde_json::Value;
+        use near_sdk::serde_json;
         use near_sdk::test_utils::{accounts, VMContextBuilder};
         use near_sdk::{testing_env, AccountId};
         use prover::Prover;
@@ -171,7 +172,7 @@ mod prover {
                             .unwrap(),
                     ),
                     String::from(header_value["inner_lite"]["outcome_root"].as_str().unwrap()),
-                    String::from(header_value["inner_lite"]["timestamp"].as_str().unwrap()),
+                    String::from(header_value["inner_lite"]["timestamp_nanosec"].as_str().unwrap()),
                     String::from(header_value["inner_lite"]["next_bp_hash"].as_str().unwrap()),
                     String::from(
                         header_value["inner_lite"]["block_merkle_root"]
@@ -197,6 +198,7 @@ mod prover {
         fn proof_valid(filename: &str, block_height: u64, _block_merkle_root: Hash) {
             let prover = init();
             let proof = value_to_full_outcome_proof(&file_as_json::<Value>(filename).unwrap());
+            //println!("{}", serde_json::to_string(&proof).unwrap());
 
             prover.prove_outcome(proof, block_height);
             let ret = promise_return(0);
@@ -258,6 +260,17 @@ mod prover {
                 "proof6.json",
                 377,
                 decode_hex("cc3954a51b7c1a86861df8809f79c2bf839741e3e380e28360b8b3970a5d90bd")
+                    .try_into()
+                    .unwrap(),
+            );
+        }
+
+        #[test]
+        fn proof7() {
+            proof_valid(
+                "proof7.json",
+                93544034,
+                decode_hex("cc3954a51b7c1a86861df8809f79c2bf839741e3e380e28360b8b3970a5d90bd") // TODO replace with real merkle root for this proof
                     .try_into()
                     .unwrap(),
             );

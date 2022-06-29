@@ -35,7 +35,7 @@
       "next_epoch_id":"4VGtNxYqDFfgKSQ7b6VjYAFSzN17sKNm8pFhHnL2H8vJ",
       "prev_state_root":"BWChofcus3fmDTj5zJWZxRbdaUiBWLUGWDpyaRXfQjui",
       "outcome_root":"EPVTqyz9tKwcCXcyENZNZaBzcrN5mR1PrH2vHEZCJJkr",
-      "timestamp":"1593379656945908000",
+      "timestamp_nanosec":"1593379656945908000",
       "next_bp_hash":"BKD5rntrpPTgf9FtfVgdz9cDkFJCrwag77pGDAJtynu1",
       "block_merkle_root":"FvvEfD3e7r3YkVKNMWHqB1QwvmnXg53Y4aVcW2fhnCkZ"
     }
