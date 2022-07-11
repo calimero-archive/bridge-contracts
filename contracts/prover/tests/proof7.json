@@ -1,123 +1,58 @@
 {
   "block_header_lite": {
     "inner_lite": {
-      "block_merkle_root": "HMjE5M8DD2Mr7GLjwH9a2VjReXNyiBxXuo1stEFKEq7n",
-      "epoch_id": "3Drqd4dNGThvPfuLUSr2serhsy3Dfed9fMHq3GqhXG4V",
-      "height": 93544030,
-      "next_bp_hash": "GtdRyvLnqisSgQ7fwjEC79MVvNYQii7ZwDQM5KuZLmf4",
-      "next_epoch_id": "Ecv4DCeNDSdSkv3c2fdbZW6mYN9cn4J7LLLorRVMkwaW",
-      "outcome_root": "9NHSHLswTqEKU9qzagA1EsGhLPzNQWrPTCQtyZQydra5",
-      "prev_state_root": "f1W2UbATK1hMzVeJonyaaXp28C7cj4AWo2chDcuY7dW",
-      "timestamp": 1656430968543907834,
-      "timestamp_nanosec": "1656430968543907834"
+      "block_merkle_root": "4a2WszqBELxvAofktYKEyBbWd5nmk6d7cVVQjpw6n1Du",
+      "epoch_id": "97xWJUp824sUqU1yDRafh4s8skEPbuQFH8vZCNjt42rW",
+      "height": 93700916,
+      "next_bp_hash": "Ac4KGViamyvyDpr24WbRicbBXsX5QJBDWCPNQFBwewT6",
+      "next_epoch_id": "FXat5DZJXpbvDxRgmVzNWvs2d912qEecDLpQE5MVnvvN",
+      "outcome_root": "CiNqbgEuJYYnzBakmRTe96QtWrLQHCYDtTXGSnuftwPD",
+      "prev_state_root": "Aok5ArFiAnvQXF3JAwpP8cR1osVjqZNqdgcVqpiNhiEB",
+      "timestamp": 1656592785165079600,
+      "timestamp_nanosec": "1656592785165079445"
     },
-    "inner_rest_hash": "7wXfhTUymqpCy8BtdYtX7Dg81GEf8ZvNmxRqKMwUf6W4",
-    "prev_block_hash": "DWi2FDSWtgBkXfcJfGKHnTLNKRcrHxx8CNxBaRsB9ced"
+    "inner_rest_hash": "GA98ZMw2NpAx8nywwuYWgjRojhFXDeCGabcmAocFKsCp",
+    "prev_block_hash": "DVoSRXYr6Jv9txKV9dRrG9CtBSosTZbiNHq2FrWKuXcd"
   },
-  "block_proof": [
-    {
-      "direction": "Right",
-      "hash": "8hootuAvhhQZCf5fRREU4oxuo67RBocsZRmwEMPzjW97"
-    },
-    {
-      "direction": "Left",
-      "hash": "6f525oeyrh1E1zxfxcvf7Rhf3s2gv4iX7BAPRw2mhDNN"
-    },
-    {
-      "direction": "Right",
-      "hash": "EjzfaGq3hW1oCwfyBR3TZRfv2sgNDxH6n2AUti2xgbfq"
-    },
-    {
-      "direction": "Left",
-      "hash": "8EyX4gyPjFa5hQ9QpExTypWRoXcShmrRW5EJmZ6pYdSg"
-    },
-    {
-      "direction": "Left",
-      "hash": "EGM8G6SiXJZ4T5HNL5TZJaPLVChw4ouydHk5n3QavTV4"
-    },
-    {
-      "direction": "Left",
-      "hash": "7GAKFWbLEUKtZJgGtw3gNkW6xCx22iJ3wxscyZsztJVw"
-    },
-    {
-      "direction": "Left",
-      "hash": "BBmAKHRBwCmTf95dXc9pzsfS742ndFdRHUeyAqC1Jihm"
-    },
-    {
-      "direction": "Left",
-      "hash": "4JS4kbHGhAmeoVjtqapXrdeD4FKDdCbNUmUnKVLbzTZ5"
-    },
-    {
-      "direction": "Left",
-      "hash": "DmwQEzrfgTXiDg6z9sNuBUxTAa1mUjr23Wejv6KVCoDu"
-    },
-    {
-      "direction": "Left",
-      "hash": "EK8nH1g1tXenMYSXkr6vbeC9SDDkTbJNq7x45ggCokZo"
-    },
-    {
-      "direction": "Left",
-      "hash": "4aHfTZrMDJwx58bNhw3F2pgffPBBxkon1DXhKjKy2HAt"
-    },
-    {
-      "direction": "Left",
-      "hash": "6P1cU8jQSkDiTeqp6PLCyYudHZNdqacd2XcjjkHL3pRg"
-    },
-    {
-      "direction": "Left",
-      "hash": "2v7GwVwAtePLuNGtW3uTMwWkAUXD4YPyBeNDGV31XugG"
-    },
-    {
-      "direction": "Left",
-      "hash": "Gga62BEfbomV8ZNz3DkPQEFf6UbEqMKngwNAp5zDDoki"
-    },
-    {
-      "direction": "Left",
-      "hash": "76U6DMh4J4VB5sfVVNRpSTeB4SEVt4HPqhtQi2izGZxt"
-    }
-  ],
+  "block_proof": [],
   "outcome_proof": {
-    "block_hash": "8vYNgGPh1URVrFBsKYdMqU8J4X4EcSfur2D6mxPpHLYD",
-    "id": "8qtbwMh9NVqygMzn8cgGCoaXB4q6xLaynAAy7Apnjjiq",
+    "block_hash": "9no8PifBxHHaQKeFuCKuXsqjp5UkkvGKBtMsyuJ5nwLp",
+    "id": "FKTMosGgNGiDZtk7mTj94oXjwDWqWSNbUBCMrntqzi6Q",
     "outcome": {
       "executor_id": "relay.aurora",
-      "gas_burnt": 2429618073906,
+      "gas_burnt": 2428249682298,
       "logs": [],
       "metadata": {
         "gas_profile": null,
         "version": 1
       },
       "receipt_ids": [
-        "G1EbTpifEAC3KCCFZmnj4LXJmyjwdkm12VC7KduwuxDC"
+        "HG6KENeJALh3csgmNFwMazonwo7c4hBddW3uQeuGJT3p"
       ],
       "status": {
-        "SuccessReceiptId": "G1EbTpifEAC3KCCFZmnj4LXJmyjwdkm12VC7KduwuxDC"
+        "SuccessReceiptId": "HG6KENeJALh3csgmNFwMazonwo7c4hBddW3uQeuGJT3p"
       },
-      "tokens_burnt": "242961807390600000000"
+      "tokens_burnt": "242824968229800000000"
     },
     "proof": [
       {
-        "direction": "Left",
-        "hash": "BNBGYYcnmHMSQnsV6HW4SvY5AaBtqbVwsmnbLyfHAa54"
+        "direction": "Right",
+        "hash": "EtB1m4bgTioP5ErdbLSGR3xxtMTH5YEUtELE9YBGxwdp"
       },
       {
         "direction": "Right",
-        "hash": "6WALqwxEHM8hokutirPCEiD3NzQB1eEc4wAawf85AXTv"
-      },
-      {
-        "direction": "Right",
-        "hash": "2BfqhHVmrzMHR8JWg2WHDZVioAf6m9MCcgikpZnKh3JT"
+        "hash": "6MqdtZgQiMzFDgDiG7uP4kYsehJohSbSRfmkGV6oiuja"
       }
     ]
   },
   "outcome_root_proof": [
     {
-      "direction": "Right",
-      "hash": "HZ6PT7vifoWgPnGYZD5PZYS7Mpn9hofeK4ktomZgZ4ea"
+      "direction": "Left",
+      "hash": "AEp6nNheh3aw11fU2fcydbPsLoNpcxHSERbk8XvaprSc"
     },
     {
       "direction": "Left",
-      "hash": "4A9zZ1umpi36rXiuaKYJZgAjhUH9WoTrnSBXtA3wMdV2"
+      "hash": "9iXnsvK56hm1DDegqom4vJBRQ3iKmM6HF1b1FY57bVjV"
     }
   ]
 }

@@ -255,6 +255,11 @@ mod light_client {
                     == "ea43feedc69d8df45d6afcb25cf428ab0ba8044dd818586e48979797f5f55a01"
             );
 
+            assert!(
+                encode_hex(&bridge.block_merkle_roots(304).unwrap())
+                    == "5cbeabb6f5d6ddaeaa6250c82ff52a7858e8b0ce25de0593dd7b728becd7b102"
+            );
+
             let context_308 = get_context(accounts(0), 308 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 308);
             testing_env!(context_308.build());
             bridge.add_light_client_block(value_to_block(&block308));
@@ -266,6 +271,16 @@ mod light_client {
             assert!(
                 encode_hex(&bridge.block_hashes(308).unwrap())
                     == "92c231eb7719d7cc7598e7bc614bbd0eb0be3729b47a36ede4a66033aa5051d9"
+            );
+
+            assert!(
+                encode_hex(&bridge.block_merkle_roots(308).unwrap())
+                    == "7e4e19fea8f998800da1bd289f7e420395f2f32fb5683237deaf6d6a3ecfbdae"
+            );
+
+            assert!(
+                encode_hex(&bridge.block_merkle_roots(304).unwrap())
+                    == "5cbeabb6f5d6ddaeaa6250c82ff52a7858e8b0ce25de0593dd7b728becd7b102"
             );
 
             let mut i = 0;

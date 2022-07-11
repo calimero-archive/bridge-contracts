@@ -2,10 +2,10 @@ pub mod errors;
 pub mod signature;
 
 pub use crate::signature::{PublicKey, Signature};
-use utils::{hashes, swap_bytes4, u128_dec_format, Hash, Hashable};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env;
 use near_sdk::serde::{Deserialize, Serialize};
+use utils::{hashes, swap_bytes16, swap_bytes4, swap_bytes8, u64_dec_format, u128_dec_format, Hash, Hashable};
 
 #[macro_export]
 macro_rules! impl_header_hash {
@@ -137,7 +137,8 @@ pub struct BlockHeaderInnerLite {
     pub next_epoch_id: Hash,
     pub prev_state_root: Hash, // Root hash of the state at the previous block.
     pub outcome_root: Hash,    // Root of the outcomes of transactions and receipts.
-    pub timestamp: u64,        // Timestamp at which the block was built.
+    #[serde(with = "u64_dec_format")]
+    pub timestamp: u64,        // Timestamp at which the block was built. 
     pub next_bp_hash: Hash,    // Hash of the next epoch block producers set
     pub block_merkle_root: Hash,
 }
@@ -232,7 +233,6 @@ pub struct ExecutionOutcome {
     pub tokens_burnt: u128, // The total number of the tokens burnt by the given transaction or receipt.
     pub executor_id: String, // The transaction or receipt id that produced this outcome.
     pub status: ExecutionStatus, // Execution status. Contains the result in case of successful execution.
-                                 //pub merkelization_hashes: Vec<Hash>, // TODO computable
 }
 
 impl ExecutionOutcome {
@@ -243,8 +243,8 @@ impl ExecutionOutcome {
         for receipt_id in &self.receipt_ids {
             bytes.extend(&receipt_id.try_to_vec().expect("Failed to serialize"));
         }
-        bytes.extend(&self.gas_burnt.try_to_vec().expect("Failed to serialize"));
-        bytes.extend(&self.tokens_burnt.try_to_vec().expect("Failed to serialize"));
+        bytes.extend(&swap_bytes8(self.gas_burnt).to_be_bytes());
+        bytes.extend(&swap_bytes16(self.tokens_burnt).to_be_bytes());
         bytes.extend(&self.executor_id.try_to_vec().expect("Failed to serialize"));
         bytes.extend(&self.status.try_to_vec().expect("Failed to serialize"));
         let mut res: Vec<Hash> = Vec::new();

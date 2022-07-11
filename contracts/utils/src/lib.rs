@@ -15,6 +15,13 @@ pub fn swap_bytes8(v: u64) -> u64 {
     return (r << 32) | (r >> 32);
 }
 
+pub fn swap_bytes16(v: u128) -> u128 {
+    let mut r = ((v & 0x00ff00ff00ff00ff00ff00ff00ff00ff) << 8) | ((v & 0xff00ff00ff00ff00ff00ff00ff00ff00) >> 8);
+    r = ((r & 0x0000ffff0000ffff0000ffff0000ffff) << 16) | ((r & 0xffff0000ffff0000ffff0000ffff0000) >> 16);
+    r = ((r & 0x00000000ffffffff00000000ffffffff) << 32) | ((r & 0xffffffff00000000ffffffff00000000) >> 32);
+    return (r << 64) | (r >> 64);
+}
+
 pub mod u128_dec_format {
     use near_sdk::serde::de;
     use near_sdk::serde::{Deserialize, Deserializer, Serializer};
@@ -32,6 +39,26 @@ pub mod u128_dec_format {
     {
         let s = String::deserialize(deserializer)?;
         u128::from_str_radix(&s, 10).map_err(de::Error::custom)
+    }
+}
+
+pub mod u64_dec_format {
+    use near_sdk::serde::de;
+    use near_sdk::serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(num: &u64, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", num))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<u64, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        u64::from_str_radix(&s, 10).map_err(de::Error::custom)
     }
 }
 
