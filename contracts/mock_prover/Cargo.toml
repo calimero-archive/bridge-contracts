@@ -1,5 +1,5 @@
 [package]
-name = "light_client"
+name = "mock_prover"
 version = "0.1.0"
 authors = ["Calimero <info@calimero.network>"]
 edition = "2021"
@@ -8,13 +8,9 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-admin_controlled = { path = "../admin_controlled" }
+near-sdk = "4.0.0"
 utils = { path = "../utils" }
 types = { path = "../types" }
-near-sdk = "4.0.0"
-
-[dev-dependencies]
-test_utils = { path = "../test_utils" }
 
 [profile.release]
 codegen-units = 1
