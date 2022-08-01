@@ -25,11 +25,16 @@ const FINISH_DEPOSIT_GAS: Gas = Gas(30_000_000_000_000);
 /// Gas to call verify_log_entry on prover.
 const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 
+/// Gas to call register method on FT.
+const REGISTER_FT_GAS: Gas = Gas(50_000_000_000_000);
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct FungibleTokenConnector {
     /// The account of the prover that we can use to prove
     pub prover_account: AccountId,
+    source_master_account: AccountId,
+    destination_master_account: AccountId,
     /// The account of the locker on other network that is used to burn FT
     pub locker_account: Option<AccountId>,
     /// Hashes of the events that were already used.
@@ -44,11 +49,19 @@ pub struct FungibleTokenConnector {
 impl FungibleTokenConnector {
     /// Initializes the contract.
     /// `prover_account`: NEAR account of the Near Prover contract;
+    /// `source_master_account`: NEAR master account on source network, ex. 'testnet'
+    /// `destination_master_account`: NEAR master account on this network, ex. 'shard.calimero.testnet'
     #[init]
-    pub fn new(prover_account: AccountId) -> Self {
+    pub fn new(
+        prover_account: AccountId,
+        source_master_account: AccountId,
+        destination_master_account: AccountId,
+    ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         Self {
             prover_account,
+            source_master_account,
+            destination_master_account,
             used_events: UnorderedSet::new(b"u".to_vec()),
             contracts_mapping: UnorderedMap::new(b"c".to_vec()),
             locker_account: None,
@@ -70,6 +83,17 @@ impl FungibleTokenConnector {
         );
     }
 
+    #[payable]
+    pub fn register_ft(&mut self, ft_address: AccountId, method: String) {
+        env::promise_return(env::promise_create(
+            ft_address,
+            &method,
+            &Vec::<u8>::new(),
+            env::attached_deposit(),
+            REGISTER_FT_GAS,
+        ))
+    }
+
     /// Used when sending FT to other network
     /// `msg` is expected to contain valid other network id
     pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> U128 {
@@ -80,6 +104,7 @@ impl FungibleTokenConnector {
         U128(0)
     }
 
+    #[payable]
     pub fn map_contracts(&mut self, source_contract: AccountId, destination_contract: AccountId) {
         near_sdk::assert_self();
         self.contracts_mapping
@@ -120,17 +145,18 @@ impl FungibleTokenConnector {
     }
 
     /// Used when receiving FT from other network
+    #[payable]
     pub fn unlock(&mut self, transaction: TransactionStatus, proof: FullOutcomeProof, height: u64) {
         require!(!self.locker_account.is_none());
+        let receiver_account = transaction.transaction.receiver_id;
         // TODO figure out how to verify that received TransactionStatus is indeed correct
-        let current_account_id: String = env::current_account_id().to_string();
         let withdraw: Receipt = transaction
             .receipts
             .into_iter()
-            .find(|r| r.receiver_id == current_account_id) // probably receiver_account?
+            .find(|r| r.receiver_id == receiver_account)
             .unwrap();
         let receipt_actions = match withdraw.receipt {
-            ReceiptType::Action{actions, ..} => actions,
+            ReceiptType::Action { actions, .. } => actions,
             _ => panic!("Not correct function call"),
         };
         let action = match &receipt_actions[0] {
@@ -138,12 +164,18 @@ impl FungibleTokenConnector {
             _ => panic!("Not correct function call"),
         };
 
-        let receiver_account: AccountId = transaction.transaction.receiver_id.parse().unwrap();
-
-        let ft_token_contract_account: AccountId =
-            self.contracts_mapping.get(&receiver_account).unwrap(); // probably get by signer, not receiver
-        let ft_token_receiver_account: AccountId =
-            transaction.transaction.signer_id.parse().unwrap();
+        let ft_token_contract_account: AccountId = self
+            .contracts_mapping
+            .get(&receiver_account.parse().unwrap())
+            .unwrap();
+        let destination_signer_account = transaction.transaction.signer_id;
+        let ft_token_receiver_account: String = format!(
+            "{}{}",
+            destination_signer_account
+                .strip_suffix(&self.destination_master_account.to_string())
+                .unwrap_or(&destination_signer_account),
+            self.source_master_account
+        );
         let amount: U128 = Self::decode_on_transfer_args(action.args.clone());
 
         let promise_prover = env::promise_create(
@@ -186,7 +218,7 @@ impl FungibleTokenConnector {
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
-            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
+            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
             _ => env::panic_str("Prover failed"),
         };
         require!(verification_success, "Failed to verify the proof");
@@ -215,20 +247,13 @@ impl FungibleTokenConnector {
     fn decode_on_transfer_args(args: Vec<u8>) -> U128 {
         let as_str = std::str::from_utf8(&args).unwrap();
         let json: serde_json::Value = serde_json::from_str(as_str).unwrap();
-
-        require!(
-            json["receiver_id"].as_str().unwrap() == env::current_account_id().to_string(),
-            "Proof not valid for this contract"
-        );
         let amount_str: u128 = json["amount"].as_str().unwrap().parse().unwrap();
 
         U128(amount_str)
     }
 
-    /// Record proof to make sure it is not re-used later for anther deposit.
+    /// Record proof to make sure it is not re-used later for another deposit.
     fn record_proof(&mut self, proof: &FullOutcomeProof) -> Balance {
-        // TODO: Instead of sending the full proof (clone only relevant parts of the Proof)
-        //       log_index / receipt_index / header_data
         near_sdk::assert_self();
         let initial_storage = env::storage_usage();
 

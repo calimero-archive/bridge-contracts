@@ -1,4 +1,5 @@
 use admin_controlled::Mask;
+use near_contract_standards::fungible_token::events::FtMint;
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
@@ -75,6 +76,12 @@ impl BridgeToken {
 
         self.storage_deposit(Some(account_id.clone()), None);
         self.token.internal_deposit(&account_id, amount.into());
+        FtMint {
+            owner_id: &account_id,
+            amount: &amount,
+            memo: None,
+        }
+        .emit();
     }
 
     #[payable]

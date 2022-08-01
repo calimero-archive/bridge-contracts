@@ -1,0 +1,99 @@
+{
+  "block_header_lite": {
+    "inner_lite": {
+      "block_merkle_root": "5nYK7DL9XzV416sFr8LY2CRcNSfGvEdNgdWUsHZHLhu3",
+      "epoch_id": "9XWGLyN67UJV6jMhoBHSkxBzV1EQEjTt6PYqaEQhLpdr",
+      "height": 95868867,
+      "next_bp_hash": "EYbkJmdsvvNdXtGyjVBX6kb9t7Xrx51EiP3phMsxu5Pe",
+      "next_epoch_id": "BZkhePNjxQaWXvQyX3fTsW4XoC8FbGduL9EQNJ6CGjMv",
+      "outcome_root": "F2nrVmVJzpzy1om2goMX4JfMtRkieZW2kviYqcfY4pti",
+      "prev_state_root": "EktgpwDcd9L1ZzBZjq9ZGEURJbTTwEWvH2AS2zcNoN89",
+      "timestamp": 1658830554785856500,
+      "timestamp_nanosec": "1658830554785856502"
+    },
+    "inner_rest_hash": "DgyzBe2VmvWwD5CGRY5YqVfcppvShXjuRgty7gfvFWE3",
+    "prev_block_hash": "91wSn1Hb4fPqHX55uarD3sQmViVoQXrxELDuzVUj4bFN"
+  },
+  "block_proof": [
+    {
+      "direction": "Left",
+      "hash": "91wSn1Hb4fPqHX55uarD3sQmViVoQXrxELDuzVUj4bFN"
+    },
+    {
+      "direction": "Right",
+      "hash": "HKszhjo6WbVML7FKvf6hXJAfj11DwpLAB27bmhr9XH7o"
+    },
+    {
+      "direction": "Left",
+      "hash": "CZNSg7EJNNU7BxzT64jhDBG8eeSHPNwr1uvLLevWWNUu"
+    },
+    {
+      "direction": "Left",
+      "hash": "Z3vGYxe38NjgQgNjihEQ5AULMhAohdv2vUQkY2GufTP"
+    },
+    {
+      "direction": "Left",
+      "hash": "Ci4Ep2zY6S9ttCaJtvugR83GHng5x5GLJzKT7hUPidhd"
+    },
+    {
+      "direction": "Left",
+      "hash": "5TbtvH7prLcwagoR6SUGyKXdKUk6KV3AUpZTpejdRGNW"
+    },
+    {
+      "direction": "Left",
+      "hash": "3ww2v8ZPdoXLuDuBfjtjWCovTneYKjmepru6auN4qxAz"
+    },
+    {
+      "direction": "Left",
+      "hash": "5RhY56m6UWRQ8hBjU4fc1nCHLY1uJS1Z2u7NdyJNSRQX"
+    },
+    {
+      "direction": "Left",
+      "hash": "Dcyt5LmcM3GAXTt6sjArfZ62k44iYQj7fnRS4SPc3dTh"
+    },
+    {
+      "direction": "Left",
+      "hash": "Bkcnkncp3gtWiciCK8QV2pk57MP6wWyBaRw2E7s7WbVb"
+    },
+    {
+      "direction": "Left",
+      "hash": "76U6DMh4J4VB5sfVVNRpSTeB4SEVt4HPqhtQi2izGZxt"
+    }
+  ],
+  "outcome_proof": {
+    "block_hash": "Bz6TusVjU3oaoCBkzNk183Uh5e94FMskrTZjEeKyKZmp",
+    "id": "2qTW8DGj5bmuHRNymw974LzP1qDxSMKZLXmm5am9aYo9",
+    "outcome": {
+      "executor_id": "igi.testnet",
+      "gas_burnt": 2428162480872,
+      "logs": [],
+      "metadata": {
+        "gas_profile": null,
+        "version": 1
+      },
+      "receipt_ids": [
+        "4kZGqWcLD3cUAK2TB2u3yuMHkTy4LQvc7FVzbXMv8cdA"
+      ],
+      "status": {
+        "SuccessReceiptId": "4kZGqWcLD3cUAK2TB2u3yuMHkTy4LQvc7FVzbXMv8cdA"
+      },
+      "tokens_burnt": "242816248087200000000"
+    },
+    "proof": [
+      {
+        "direction": "Right",
+        "hash": "3za3KMYP5TGSGwxRXZu58k4hbCvTk2QEBGZQgv6CmHDS"
+      }
+    ]
+  },
+  "outcome_root_proof": [
+    {
+      "direction": "Right",
+      "hash": "HsYRVXpCApn9dusG16dmPmhbts9mZbakyKMLSZKSw9EM"
+    },
+    {
+      "direction": "Left",
+      "hash": "4A9zZ1umpi36rXiuaKYJZgAjhUH9WoTrnSBXtA3wMdV2"
+    }
+  ]
+}

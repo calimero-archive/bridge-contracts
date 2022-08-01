@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod connector {
     mod test {
         use near_sdk::serde_json::json;

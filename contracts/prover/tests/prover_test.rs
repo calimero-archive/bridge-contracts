@@ -152,5 +152,16 @@ mod prover {
                     .unwrap(),
             ).await;
         }
+
+        #[tokio::test]
+        async fn proof10() {
+            proof_valid(
+                "proof10.json",
+                95868967,
+                decode_hex("685eba49d8de4d6020db910f2f982305b546f85b151ba9b78c281785d0731475")
+                    .try_into()
+                    .unwrap(),
+            ).await;
+        }
     }
 }

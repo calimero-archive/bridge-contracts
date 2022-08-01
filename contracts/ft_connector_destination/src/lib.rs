@@ -4,9 +4,9 @@ use near_sdk::collections::{UnorderedMap, UnorderedSet};
 use near_sdk::json_types::U128;
 use near_sdk::serde_json;
 use near_sdk::{
-    env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseIndex,
-    PromiseResult,
+    env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
+use std::collections::HashSet;
 
 use types::{Action, FullOutcomeProof, Receipt, ReceiptType, TransactionStatus};
 use utils::{hashes, Hash, Hashable};
@@ -24,20 +24,20 @@ const NO_DEPOSIT: Balance = 0;
 const BRIDGE_TOKEN_INIT_BALANCE: Balance = 20_000_000_000_000_000_000_000_000; // 20e24yN, 20N
 
 /// Gas to initialize BridgeToken contract.
-const BRIDGE_TOKEN_NEW: Gas = Gas(10_000_000_000_000);
+const BRIDGE_TOKEN_NEW: Gas = Gas(50_000_000_000_000);
 
 /// Gas to call mint method on bridge token.
-const MINT_GAS: Gas = Gas(10_000_000_000_000);
+const MINT_GAS: Gas = Gas(30_000_000_000_000);
 
-/// Gas to call ft_transfer_call when the target of deposit is a contract
-const FT_TRANSFER_CALL_GAS: Gas = Gas(80_000_000_000_000);
+/// Gas for deploying bridge token contract
+const DEPLOY_GAS: Gas = Gas(180_000_000_000_000);
 
 /// Gas to call finish deposit method.
 /// This doesn't cover the gas required for calling mint method.
-const FINISH_DEPOSIT_GAS: Gas = Gas(30_000_000_000_000);
+const FINISH_DEPOSIT_GAS: Gas = Gas(230_000_000_000_000);
 
-/// Gas to call verify_log_entry on prover.
-const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
+/// Gas to call prove_outcome on prover.
+const PROVE_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
 const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 const PAUSE_DEPOSIT: Mask = 1 << 1;
@@ -47,6 +47,8 @@ const PAUSE_DEPOSIT: Mask = 1 << 1;
 pub struct FungibleTokenConnector {
     /// The account of the prover that we can use to prove
     pub prover_account: AccountId,
+    source_master_account: AccountId,
+    destination_master_account: AccountId,
     /// The account of the locker on other network that is used to lock FT
     pub locker_account: Option<AccountId>,
     /// Hashes of the events that were already used.
@@ -63,11 +65,19 @@ pub struct FungibleTokenConnector {
 impl FungibleTokenConnector {
     /// Initializes the contract.
     /// `prover_account`: NEAR account of the Near Prover contract;
+    /// `source_master_account`: NEAR master account on source network, ex. 'testnet'
+    /// `destination_master_account`: NEAR master account on this network, ex. 'shard.calimero.testnet'
     #[init]
-    pub fn new(prover_account: AccountId) -> Self {
+    pub fn new(
+        prover_account: AccountId,
+        source_master_account: AccountId,
+        destination_master_account: AccountId,
+    ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         Self {
             prover_account,
+            source_master_account,
+            destination_master_account,
             used_events: UnorderedSet::new(b"u".to_vec()),
             contracts_mapping: UnorderedMap::new(b"c".to_vec()),
             locker_account: None,
@@ -88,6 +98,17 @@ impl FungibleTokenConnector {
                 >= env::storage_byte_cost() * (current_storage - initial_storage),
             "Not enough attached deposit to complete network connection"
         );
+    }
+
+    pub fn view_mapping(&self, source_account: AccountId) -> Option<AccountId> {
+        self.contracts_mapping.get(&source_account)
+    }
+
+    pub fn all_mapped(&self) -> HashSet<AccountId> {
+        let mut mappings = HashSet::new();
+        mappings.extend(self.contracts_mapping.keys());
+
+        mappings
     }
 
     /// Used when receiving FT from other network
@@ -114,7 +135,14 @@ impl FungibleTokenConnector {
             _ => panic!("Not correct function call"),
         };
         let ft_token_contract_account: String = transaction.transaction.receiver_id;
-        let ft_token_receiver_account: String = transaction.transaction.signer_id; // TODO convert to correct id for this network
+        let source_signer_account = transaction.transaction.signer_id;
+        let ft_token_receiver_account: String = format!(
+            "{}{}",
+            source_signer_account
+                .strip_suffix(&self.source_master_account.to_string())
+                .unwrap_or(&source_signer_account),
+            self.destination_master_account
+        );
         let amount: U128 = Self::decode_on_transfer_args(action.args.clone());
 
         let promise_prover = env::promise_create(
@@ -122,7 +150,7 @@ impl FungibleTokenConnector {
             "prove_outcome",
             &serde_json::to_vec(&(proof.clone(), height)).unwrap(),
             NO_DEPOSIT,
-            VERIFY_LOG_ENTRY_GAS,
+            PROVE_OUTCOME_GAS,
         );
 
         let promise_result = env::promise_then(
@@ -137,7 +165,7 @@ impl FungibleTokenConnector {
             ))
             .unwrap(),
             env::attached_deposit(),
-            FINISH_DEPOSIT_GAS + MINT_GAS + FT_TRANSFER_CALL_GAS,
+            FINISH_DEPOSIT_GAS,
         );
 
         env::promise_return(promise_result)
@@ -157,7 +185,7 @@ impl FungibleTokenConnector {
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
-            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
+            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
             _ => env::panic_str("Prover failed"),
         };
         require!(verification_success, "Failed to verify the proof");
@@ -171,23 +199,52 @@ impl FungibleTokenConnector {
                 ft_contract,
                 "mint",
                 &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
-                near_sdk::ONE_YOCTO,
+                near_sdk::ONE_NEAR,
                 MINT_GAS,
             )
         } else {
-            let deploy_promise = self.map_ft(ft_token_contract_account.clone(), rest_of_deposit);
-            env::promise_batch_action_function_call(
-                deploy_promise,
-                "mint",
-                &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
-                near_sdk::ONE_YOCTO,
-                MINT_GAS,
-            );
-            deploy_promise
+            panic!("Not yet implemented");
+            // TODO figure out why this fails with gas
+            //let deploy_promise = env::promise_create(
+            //    env::current_account_id(),
+            //    "deploy_bridge_token",
+            //    &serde_json::to_vec(&(ft_token_contract_account)).unwrap(),
+            //    rest_of_deposit - near_sdk::ONE_NEAR,
+            //    DEPLOY_GAS,
+            //);
+            //env::promise_then(
+            //    deploy_promise,
+            //    env::current_account_id(),
+            //    "mint_after_deploy",
+            //    &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
+            //    near_sdk::ONE_NEAR,
+            //    MINT_GAS,
+            //)
         };
 
         env::promise_return(transfer_promise)
     }
+
+    //#[payable]
+    //pub fn mint_after_deploy(&mut self, ft_token_receiver_account: String, amount: U128) {
+    //    near_sdk::assert_self();
+    //    require!(env::promise_results_count() == 1);
+    //
+    //    let ft_contract = match env::promise_result(0) {
+    //        PromiseResult::Successful(x) => {
+    //            serde_json::from_slice::<Vec<AccountId>>(&x).unwrap()[0].clone()
+    //        }
+    //        _ => env::panic_str("Deploy failed"),
+    //    };
+    //
+    //    env::promise_return(env::promise_create(
+    //        ft_contract,
+    //        "mint",
+    //        &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
+    //        near_sdk::ONE_YOCTO,
+    //        MINT_GAS,
+    //    ))
+    //}
 
     fn decode_on_transfer_args(args: Vec<u8>) -> U128 {
         let as_str = std::str::from_utf8(&args).unwrap();
@@ -221,17 +278,29 @@ impl FungibleTokenConnector {
         env::attached_deposit() - required_deposit
     }
 
-    fn deploy_bridge_token(&mut self, source_address: String) -> PromiseIndex {
+    #[payable]
+    pub fn deploy_bridge_token(&mut self, source_address: String) {
+        near_sdk::assert_self();
         self.assert_not_paused(PAUSE_DEPLOY_TOKEN);
 
-        let currently_mapped = self.contracts_mapping.len() + 1;
         let bridge_token_account_id = AccountId::new_unchecked(format!(
-            "ft{}.{}",
-            currently_mapped,
+            "{}{}",
+            source_address
+                .strip_suffix(&self.source_master_account.to_string())
+                .unwrap_or(&source_address)
+                .replace(".", "_"),
             env::current_account_id()
         ));
+        let initial_storage = env::storage_usage();
         self.contracts_mapping
             .insert(&source_address.parse().unwrap(), &bridge_token_account_id);
+        let required_deposit = Balance::from(initial_storage - initial_storage)
+            * env::storage_byte_cost()
+            + BRIDGE_TOKEN_INIT_BALANCE;
+        require!(
+            env::attached_deposit() >= required_deposit,
+            "Deposit too low"
+        );
 
         let promise = env::promise_batch_create(&bridge_token_account_id);
         env::promise_batch_action_create_account(promise);
@@ -239,34 +308,15 @@ impl FungibleTokenConnector {
         env::promise_batch_action_add_key_with_full_access(promise, &self.owner_pk.clone(), 0);
         env::promise_batch_action_deploy_contract(promise, &BRIDGE_TOKEN_BINARY.to_vec());
         env::promise_batch_action_function_call(
-            // TODO resolve tests, currently fails due to Promise being used 
+            // TODO resolve tests, currently fails due to Promise being used
             promise,
             "new",
             &vec![],
             NO_DEPOSIT,
             BRIDGE_TOKEN_NEW,
         );
-        promise
-    }
 
-    /// Function deploys FT smart contract that will be wrapped representation of
-    /// ```ft_token_contract_account``` from source network.
-    /// That connection is then saved to be used for other mints of that particular token.
-    /// Also checks if there is enough unused deposit to successfully deploy FT contract.
-    fn map_ft(
-        &mut self,
-        ft_token_contract_account: String,
-        rest_of_deposit: Balance,
-    ) -> PromiseIndex {
-        near_sdk::assert_self();
-        let initial_storage = env::storage_usage();
-        let deploy_promise = self.deploy_bridge_token(ft_token_contract_account);
-        let current_storage = env::storage_usage();
-        let required_deposit = Balance::from(current_storage - initial_storage)
-            * env::storage_byte_cost()
-            + BRIDGE_TOKEN_INIT_BALANCE;
-        require!(rest_of_deposit >= required_deposit, "Deposit too low");
-        deploy_promise
+        env::value_return(&serde_json::to_vec(&(bridge_token_account_id,)).unwrap());
     }
 }
 
