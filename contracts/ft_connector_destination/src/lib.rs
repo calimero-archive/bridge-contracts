@@ -6,9 +6,7 @@ use near_sdk::serde_json;
 use near_sdk::{
     env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
-use std::collections::HashSet;
-
-use types::{Action, FullOutcomeProof, Receipt, ReceiptType, TransactionStatus};
+use types::FullOutcomeProof;
 use utils::{hashes, Hash, Hashable};
 
 use near_sdk::PublicKey;
@@ -39,6 +37,8 @@ const FINISH_DEPOSIT_GAS: Gas = Gas(230_000_000_000_000);
 /// Gas to call prove_outcome on prover.
 const PROVE_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
+const CALIMERO_EVENT: &str = "CALIMERO_EVENT";
+
 const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 const PAUSE_DEPOSIT: Mask = 1 << 1;
 
@@ -57,6 +57,8 @@ pub struct FungibleTokenConnector {
     pub owner_pk: PublicKey,
     /// Mappings between FT contract on main network and FT contract on this network
     contracts_mapping: UnorderedMap<AccountId, AccountId>,
+    /// All FT contracts that were deployed by this account
+    all_contracts: UnorderedSet<AccountId>,
     /// Mask determining all paused functions
     paused: Mask,
 }
@@ -80,6 +82,7 @@ impl FungibleTokenConnector {
             destination_master_account,
             used_events: UnorderedSet::new(b"u".to_vec()),
             contracts_mapping: UnorderedMap::new(b"c".to_vec()),
+            all_contracts: UnorderedSet::new(b"a".to_vec()),
             locker_account: None,
             owner_pk: env::signer_account_pk(),
             paused: Mask::default(),
@@ -104,46 +107,48 @@ impl FungibleTokenConnector {
         self.contracts_mapping.get(&source_account)
     }
 
-    pub fn all_mapped(&self) -> HashSet<AccountId> {
-        let mut mappings = HashSet::new();
-        mappings.extend(self.contracts_mapping.keys());
-
-        mappings
+    pub fn burn(&mut self, burner_id: AccountId, amount: u128) {
+        require!(
+            self.all_contracts.contains(&env::predecessor_account_id()),
+            "Untrusted burn"
+        );
+        env::log_str(&format!(
+            "CALIMERO_EVENT:{}:{}:{}",
+            env::predecessor_account_id(),
+            burner_id,
+            amount
+        ));
     }
 
     /// Used when receiving FT from other network
     #[payable]
-    pub fn mint(&mut self, transaction: TransactionStatus, proof: FullOutcomeProof, height: u64) {
+    pub fn mint(&mut self, proof: FullOutcomeProof, height: u64) {
         self.assert_not_paused(PAUSE_DEPOSIT);
         require!(!self.locker_account.is_none());
-        // TODO figure out how to verify that received TransactionStatus is indeed correct
-        let ft_on_transfer: Receipt = transaction
-            .receipts
-            .into_iter()
-            .find(|r| {
-                &r.receiver_id.parse::<AccountId>().unwrap()
-                    == self.locker_account.as_ref().unwrap()
-            })
-            .unwrap();
-        let receipt_actions = match ft_on_transfer.receipt {
-            ReceiptType::Action { actions, .. } => actions,
-            _ => panic!("Not correct function call"),
-        };
-
-        let action = match &receipt_actions[0] {
-            Action::FunctionCall(function_call_action) => function_call_action,
-            _ => panic!("Not correct function call"),
-        };
-        let ft_token_contract_account: String = transaction.transaction.receiver_id;
-        let source_signer_account = transaction.transaction.signer_id;
+        require!(
+            proof.outcome_proof.outcome_with_id.outcome.executor_id
+                == self.locker_account.as_ref().unwrap().to_string(),
+            "Untrusted proof, lock receipt proof required"
+        );
+        let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
+        let parts: Vec<&str> = std::str::from_utf8(&event_log)
+            .unwrap()
+            .split(":")
+            .collect();
+        require!(
+            parts.len() == 4 && parts[0] == CALIMERO_EVENT,
+            "Untrusted proof, lock receipt proof required"
+        );
+        let ft_token_contract_account = parts[1];
+        let source_receiver_account = parts[2];
+        let amount = U128(parts[3].parse::<u128>().unwrap());
         let ft_token_receiver_account: String = format!(
             "{}{}",
-            source_signer_account
+            source_receiver_account
                 .strip_suffix(&self.source_master_account.to_string())
-                .unwrap_or(&source_signer_account),
+                .unwrap_or(&source_receiver_account),
             self.destination_master_account
         );
-        let amount: U128 = Self::decode_on_transfer_args(action.args.clone());
 
         let promise_prover = env::promise_create(
             self.prover_account.clone(),
@@ -203,55 +208,46 @@ impl FungibleTokenConnector {
                 MINT_GAS,
             )
         } else {
-            panic!("Not yet implemented");
             // TODO figure out why this fails with gas
-            //let deploy_promise = env::promise_create(
-            //    env::current_account_id(),
-            //    "deploy_bridge_token",
-            //    &serde_json::to_vec(&(ft_token_contract_account)).unwrap(),
-            //    rest_of_deposit - near_sdk::ONE_NEAR,
-            //    DEPLOY_GAS,
-            //);
-            //env::promise_then(
-            //    deploy_promise,
-            //    env::current_account_id(),
-            //    "mint_after_deploy",
-            //    &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
-            //    near_sdk::ONE_NEAR,
-            //    MINT_GAS,
-            //)
+            let deploy_promise = env::promise_create(
+                env::current_account_id(),
+                "deploy_bridge_token",
+                &serde_json::to_vec(&(ft_token_contract_account)).unwrap(),
+                rest_of_deposit - near_sdk::ONE_NEAR,
+                DEPLOY_GAS,
+            );
+            env::promise_then(
+                deploy_promise,
+                env::current_account_id(),
+                "mint_after_deploy",
+                &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
+                near_sdk::ONE_NEAR,
+                MINT_GAS,
+            )
         };
 
         env::promise_return(transfer_promise)
     }
 
-    //#[payable]
-    //pub fn mint_after_deploy(&mut self, ft_token_receiver_account: String, amount: U128) {
-    //    near_sdk::assert_self();
-    //    require!(env::promise_results_count() == 1);
-    //
-    //    let ft_contract = match env::promise_result(0) {
-    //        PromiseResult::Successful(x) => {
-    //            serde_json::from_slice::<Vec<AccountId>>(&x).unwrap()[0].clone()
-    //        }
-    //        _ => env::panic_str("Deploy failed"),
-    //    };
-    //
-    //    env::promise_return(env::promise_create(
-    //        ft_contract,
-    //        "mint",
-    //        &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
-    //        near_sdk::ONE_YOCTO,
-    //        MINT_GAS,
-    //    ))
-    //}
+    #[payable]
+    pub fn mint_after_deploy(&mut self, ft_token_receiver_account: String, amount: U128) {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
 
-    fn decode_on_transfer_args(args: Vec<u8>) -> U128 {
-        let as_str = std::str::from_utf8(&args).unwrap();
-        let json: serde_json::Value = serde_json::from_str(as_str).unwrap();
-        let amount_str: u128 = json["amount"].as_str().unwrap().parse().unwrap();
+        let ft_contract = match env::promise_result(0) {
+            PromiseResult::Successful(x) => {
+                serde_json::from_slice::<Vec<AccountId>>(&x).unwrap()[0].clone()
+            }
+            _ => env::panic_str("Deploy failed"),
+        };
 
-        U128(amount_str)
+        env::promise_return(env::promise_create(
+            ft_contract,
+            "mint",
+            &serde_json::to_vec(&(ft_token_receiver_account, amount)).unwrap(),
+            near_sdk::ONE_YOCTO,
+            MINT_GAS,
+        ))
     }
 
     /// Record proof to make sure it is not re-used later for another deposit.
@@ -284,9 +280,9 @@ impl FungibleTokenConnector {
         self.assert_not_paused(PAUSE_DEPLOY_TOKEN);
 
         let bridge_token_account_id = AccountId::new_unchecked(format!(
-            "{}{}",
+            "{}.{}",
             source_address
-                .strip_suffix(&self.source_master_account.to_string())
+                .strip_suffix(&format!(".{}", self.source_master_account.to_string()))
                 .unwrap_or(&source_address)
                 .replace(".", "_"),
             env::current_account_id()
@@ -294,6 +290,7 @@ impl FungibleTokenConnector {
         let initial_storage = env::storage_usage();
         self.contracts_mapping
             .insert(&source_address.parse().unwrap(), &bridge_token_account_id);
+        self.all_contracts.insert(&bridge_token_account_id);
         let required_deposit = Balance::from(initial_storage - initial_storage)
             * env::storage_byte_cost()
             + BRIDGE_TOKEN_INIT_BALANCE;
@@ -301,6 +298,8 @@ impl FungibleTokenConnector {
             env::attached_deposit() >= required_deposit,
             "Deposit too low"
         );
+
+        env::log_str(&format!("CALIMERO_EVENT:{}:{}", source_address, bridge_token_account_id));
 
         let promise = env::promise_batch_create(&bridge_token_account_id);
         env::promise_batch_action_create_account(promise);

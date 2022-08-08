@@ -7,8 +7,8 @@ use near_contract_standards::fungible_token::FungibleToken;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::{
-    assert_one_yocto, env, near_bindgen, AccountId, PanicOnDefault, Promise, PromiseOrValue,
-    StorageUsage,
+    assert_one_yocto, env, ext_contract, near_bindgen, AccountId, Balance, Gas, PanicOnDefault,
+    Promise, PromiseOrValue, StorageUsage,
 };
 
 #[near_bindgen]
@@ -24,6 +24,14 @@ pub struct BridgeToken {
     paused: Mask,
     icon: Option<String>,
 }
+
+#[ext_contract(ext_connector)]
+trait ExtConnector {
+    fn burn(&self, burner_id: AccountId, amount: Balance);
+}
+
+/// Gas to call burn method on controller.
+const BURN_GAS: Gas = Gas(30_000_000_000_000);
 
 const PAUSE_WITHDRAW: Mask = 1 << 0;
 
@@ -85,14 +93,21 @@ impl BridgeToken {
     }
 
     #[payable]
-    pub fn withdraw(&mut self, amount: U128) {
+    pub fn withdraw(&mut self, amount: U128) -> Promise {
         self.assert_not_paused(PAUSE_WITHDRAW);
 
         assert_one_yocto();
-        Promise::new(env::predecessor_account_id()).transfer(1);
+
+        let burn_promise = ext_connector::ext(self.controller.clone())
+            .with_static_gas(BURN_GAS)
+            .burn(env::predecessor_account_id(), amount.into());
 
         self.token
             .internal_withdraw(&env::predecessor_account_id(), amount.into());
+
+        Promise::new(env::predecessor_account_id())
+            .transfer(near_sdk::ONE_YOCTO)
+            .then(burn_promise)
     }
 
     pub fn account_storage_usage(&self) -> StorageUsage {

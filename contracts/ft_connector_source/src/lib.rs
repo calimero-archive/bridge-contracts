@@ -7,7 +7,7 @@ use near_sdk::{
     env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
 
-use types::{Action, FullOutcomeProof, Receipt, ReceiptType, TransactionStatus};
+use types::FullOutcomeProof;
 use utils::{hashes, Hash, Hashable};
 
 const NO_DEPOSIT: Balance = 0;
@@ -27,6 +27,8 @@ const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 
 /// Gas to call register method on FT.
 const REGISTER_FT_GAS: Gas = Gas(50_000_000_000_000);
+
+const CALIMERO_EVENT: &str = "CALIMERO_EVENT";
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -100,7 +102,13 @@ impl FungibleTokenConnector {
         self.lock(sender_id, amount, msg)
     }
 
-    fn lock(&mut self, _sender_id: AccountId, _amount: U128, _msg: String) -> U128 {
+    fn lock(&mut self, sender_id: AccountId, amount: U128, _msg: String) -> U128 {
+        env::log_str(&format!(
+            "CALIMERO_EVENT:{}:{}:{}",
+            env::predecessor_account_id(),
+            sender_id,
+            amount.0
+        ));
         U128(0)
     }
 
@@ -111,14 +119,26 @@ impl FungibleTokenConnector {
             .insert(&destination_contract, &source_contract);
     }
 
-    // TODO implement transaction verification and use map_contracts as promise callback
-    // CURENTLY NOT USED
-    pub fn register_ft_on_private(
-        &mut self,
-        _transaction: TransactionStatus,
-        proof: FullOutcomeProof,
-        height: u64,
-    ) {
+    pub fn register_ft_on_private(&mut self, proof: FullOutcomeProof, height: u64) {
+        require!(!self.locker_account.is_none());
+        require!(
+            proof.outcome_proof.outcome_with_id.outcome.executor_id
+                == self.locker_account.as_ref().unwrap().to_string(),
+            "Untrusted proof, deploy_bridge_token receipt proof required"
+        );
+        let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
+        let parts: Vec<&str> = std::str::from_utf8(&event_log)
+            .unwrap()
+            .split(":")
+            .collect();
+        require!(
+            parts.len() == 3 && parts[0] == CALIMERO_EVENT,
+            "Untrusted proof, deploy_bridge_token receipt proof required"
+        );
+
+        let ft_token_contract_account_source = parts[1];
+        let ft_token_contract_account_destination = parts[2];
+
         // check that account deployment was done by locker_account
         let promise_prover = env::promise_create(
             self.prover_account.clone(),
@@ -133,12 +153,12 @@ impl FungibleTokenConnector {
             env::current_account_id(),
             "map_contracts",
             &serde_json::to_vec(&(
-                //ft_token_contract_account_source,
-                //ft_token_contract_account_destination,
+                ft_token_contract_account_source,
+                ft_token_contract_account_destination,
             ))
             .unwrap(),
             env::attached_deposit(),
-            FINISH_DEPOSIT_GAS + MINT_GAS + FT_TRANSFER_CALL_GAS,
+            FINISH_DEPOSIT_GAS,
         );
 
         env::promise_return(promise_result)
@@ -146,37 +166,37 @@ impl FungibleTokenConnector {
 
     /// Used when receiving FT from other network
     #[payable]
-    pub fn unlock(&mut self, transaction: TransactionStatus, proof: FullOutcomeProof, height: u64) {
+    pub fn unlock(&mut self, proof: FullOutcomeProof, height: u64) {
         require!(!self.locker_account.is_none());
-        let receiver_account = transaction.transaction.receiver_id;
-        // TODO figure out how to verify that received TransactionStatus is indeed correct
-        let withdraw: Receipt = transaction
-            .receipts
-            .into_iter()
-            .find(|r| r.receiver_id == receiver_account)
-            .unwrap();
-        let receipt_actions = match withdraw.receipt {
-            ReceiptType::Action { actions, .. } => actions,
-            _ => panic!("Not correct function call"),
-        };
-        let action = match &receipt_actions[0] {
-            Action::FunctionCall(function_call_action) => function_call_action,
-            _ => panic!("Not correct function call"),
-        };
+        require!(
+            proof.outcome_proof.outcome_with_id.outcome.executor_id
+                == self.locker_account.as_ref().unwrap().to_string(),
+            "Untrusted proof, burn receipt proof required"
+        );
+        let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
+        let parts: Vec<&str> = std::str::from_utf8(&event_log)
+            .unwrap()
+            .split(":")
+            .collect();
+        require!(
+            parts.len() == 4 && parts[0] == CALIMERO_EVENT,
+            "Untrusted proof, burn receipt proof required"
+        );
+        let destination_contract = parts[1];
+        let destination_receiver_account = parts[2];
+        let amount = U128(parts[3].parse::<u128>().unwrap());
 
         let ft_token_contract_account: AccountId = self
             .contracts_mapping
-            .get(&receiver_account.parse().unwrap())
+            .get(&destination_contract.parse().unwrap())
             .unwrap();
-        let destination_signer_account = transaction.transaction.signer_id;
         let ft_token_receiver_account: String = format!(
             "{}{}",
-            destination_signer_account
+            destination_receiver_account
                 .strip_suffix(&self.destination_master_account.to_string())
-                .unwrap_or(&destination_signer_account),
+                .unwrap_or(&destination_receiver_account),
             self.source_master_account
         );
-        let amount: U128 = Self::decode_on_transfer_args(action.args.clone());
 
         let promise_prover = env::promise_create(
             self.prover_account.clone(),
@@ -242,14 +262,6 @@ impl FungibleTokenConnector {
             near_sdk::ONE_YOCTO,
             MINT_GAS,
         ))
-    }
-
-    fn decode_on_transfer_args(args: Vec<u8>) -> U128 {
-        let as_str = std::str::from_utf8(&args).unwrap();
-        let json: serde_json::Value = serde_json::from_str(as_str).unwrap();
-        let amount_str: u128 = json["amount"].as_str().unwrap().parse().unwrap();
-
-        U128(amount_str)
     }
 
     /// Record proof to make sure it is not re-used later for another deposit.
