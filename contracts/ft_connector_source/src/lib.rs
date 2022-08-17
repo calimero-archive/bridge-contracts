@@ -115,6 +115,14 @@ impl FungibleTokenConnector {
     #[payable]
     pub fn map_contracts(&mut self, source_contract: AccountId, destination_contract: AccountId) {
         near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let verification_success = match env::promise_result(0) {
+            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
+            _ => env::panic_str("Prover failed"),
+        };
+        require!(verification_success, "Failed to verify the proof");
+
         self.contracts_mapping
             .insert(&destination_contract, &source_contract);
     }
@@ -136,8 +144,8 @@ impl FungibleTokenConnector {
             "Untrusted proof, deploy_bridge_token receipt proof required"
         );
 
-        let ft_token_contract_account_source = parts[1];
-        let ft_token_contract_account_destination = parts[2];
+        let ft_token_contract_account_source: AccountId = parts[1].parse().unwrap();
+        let ft_token_contract_account_destination: AccountId = parts[2].parse().unwrap();
 
         // check that account deployment was done by locker_account
         let promise_prover = env::promise_create(
