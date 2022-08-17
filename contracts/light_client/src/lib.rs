@@ -77,6 +77,22 @@ impl LightClient {
         return self.initialized;
     }
 
+    #[cfg(reset)]
+    pub fn reset_state(&mut self) {
+        near_sdk::assert_self();
+        self.epochs = Vec::new();
+        self.last_valid_at = 0;
+        self.current_height = 0;
+        self.untrusted_height = 0;
+        self.initialized = false;
+        self.untrusted_next_epoch = false;
+        self.untrusted_signature_set = 0;
+        self.untrusted_signatures = Vec::new();
+        self.current_epoch_index = 0;
+        self.block_merkle_roots = LookupMap::new(b"m");
+        self.block_hashes = LookupMap::new(b"h");
+    }
+
     /// The first part of initialization -- setting the validators of the current epoch.
     pub fn init_with_validators(&mut self, initial_validators: Vec<Validator>) {
         near_sdk::assert_self();
