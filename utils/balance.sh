@@ -8,5 +8,5 @@ destination_master_account="$1.calimero"
 
 near view "$2" ft_balance_of \
   --args  "{\"account_id\":\"$3\"}" \
-  --nodeUrl "https://api-staging.calimero.network/api/v1/shards/$1/neard-rpc" \
+  --nodeUrl "https://api-staging.calimero.network/api/v1/shards/$1-calimero/neard-rpc" \
   --networkId "$1"

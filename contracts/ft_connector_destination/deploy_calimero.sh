@@ -10,5 +10,5 @@ near deploy \
   --accountId "connector.$destination_master_account" \
   --wasmFile target/wasm32-unknown-unknown/release/ft_connector_destination.wasm \
   --initFunction new --initArgs "{\"prover_account\":\"$prover\", \"source_master_account\": \"testnet\", \"destination_master_account\": \"$destination_master_account\"}" \
-  --nodeUrl "https://api-staging.calimero.network/api/v1/shards/$1/neard-rpc" \
+  --nodeUrl "https://api-staging.calimero.network/api/v1/shards/$1-calimero/neard-rpc" \
   --networkId "$1"

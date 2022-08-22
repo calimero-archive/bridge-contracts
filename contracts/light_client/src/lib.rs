@@ -279,21 +279,20 @@ impl LightClient {
             self.untrusted_signature_set & (1 << signature_index) != 0,
             "No such signature"
         );
-        return true;
-        //let untrusted_epoch = &self.epochs[if self.untrusted_next_epoch {
-        //    (self.current_epoch_index + 1) % NUM_OF_EPOCHS
-        //} else {
-        //    self.current_epoch_index
-        //}];
-        //let signature = &self.untrusted_signatures[signature_index];
-        //let message = [
-        //    &[0],
-        //    &self.untrusted_next_hash as &[_],
-        //    &utils::swap_bytes8(self.untrusted_height + 2).to_be_bytes() as &[_],
-        //]
-        //.concat();
+        let untrusted_epoch = &self.epochs[if self.untrusted_next_epoch {
+           (self.current_epoch_index + 1) % NUM_OF_EPOCHS
+        } else {
+           self.current_epoch_index
+        }];
+        let signature = &self.untrusted_signatures[signature_index];
+        let message = [
+           &[0],
+           &self.untrusted_next_hash as &[_],
+           &utils::swap_bytes8(self.untrusted_height + 2).to_be_bytes() as &[_],
+        ]
+        .concat();
 
-        //return signature.verify(&message, &untrusted_epoch.keys[signature_index]);
+        return signature.verify(&message, &untrusted_epoch.keys[signature_index]);
     }
 
     fn hash_of_block_producers(block_producers: &Vec<Validator>) -> Hash {
