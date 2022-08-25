@@ -132,7 +132,7 @@ impl FungibleTokenConnector {
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
                 == self.locker_account.as_ref().unwrap().to_string(),
-            "Untrusted proof, deploy_bridge_token receipt proof required"
+            "Untrusted prover account, deploy_bridge_token receipt proof required"
         );
         let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
         let parts: Vec<&str> = std::str::from_utf8(&event_log)
@@ -179,7 +179,7 @@ impl FungibleTokenConnector {
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
                 == self.locker_account.as_ref().unwrap().to_string(),
-            "Untrusted proof, burn receipt proof required"
+            "Untrusted prover account, burn receipt proof required"
         );
         let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
         let parts: Vec<&str> = std::str::from_utf8(&event_log)
