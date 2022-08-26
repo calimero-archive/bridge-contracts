@@ -37,8 +37,6 @@ const FINISH_DEPOSIT_GAS: Gas = Gas(230_000_000_000_000);
 /// Gas to call prove_outcome on prover.
 const PROVE_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
-const CALIMERO_EVENT: &str = "CALIMERO_EVENT";
-
 const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 const PAUSE_DEPOSIT: Mask = 1 << 1;
 
@@ -113,7 +111,7 @@ impl FungibleTokenConnector {
             "Untrusted burn"
         );
         env::log_str(&format!(
-            "CALIMERO_EVENT:{}:{}:{}",
+            "CALIMERO_EVENT_BURN:{}:{}:{}",
             env::predecessor_account_id(),
             burner_id,
             amount
@@ -136,7 +134,7 @@ impl FungibleTokenConnector {
             .split(":")
             .collect();
         require!(
-            parts.len() == 4 && parts[0] == CALIMERO_EVENT,
+            parts.len() == 4 && parts[0] == "CALIMERO_EVENT_LOCK",
             "Untrusted proof, lock receipt proof required"
         );
         let ft_token_contract_account = parts[1];
@@ -299,7 +297,7 @@ impl FungibleTokenConnector {
             "Deposit too low"
         );
 
-        env::log_str(&format!("CALIMERO_EVENT:{}:{}", source_address, bridge_token_account_id));
+        env::log_str(&format!("CALIMERO_EVENT_DEPLOY:{}:{}", source_address, bridge_token_account_id));
 
         let promise = env::promise_batch_create(&bridge_token_account_id);
         env::promise_batch_action_create_account(promise);

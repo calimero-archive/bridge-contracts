@@ -28,8 +28,6 @@ const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 /// Gas to call register method on FT.
 const REGISTER_FT_GAS: Gas = Gas(50_000_000_000_000);
 
-const CALIMERO_EVENT: &str = "CALIMERO_EVENT";
-
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct FungibleTokenConnector {
@@ -104,7 +102,7 @@ impl FungibleTokenConnector {
 
     fn lock(&mut self, sender_id: AccountId, amount: U128, _msg: String) -> U128 {
         env::log_str(&format!(
-            "CALIMERO_EVENT:{}:{}:{}",
+            "CALIMERO_EVENT_LOCK:{}:{}:{}",
             env::predecessor_account_id(),
             sender_id,
             amount.0
@@ -140,7 +138,7 @@ impl FungibleTokenConnector {
             .split(":")
             .collect();
         require!(
-            parts.len() == 3 && parts[0] == CALIMERO_EVENT,
+            parts.len() == 3 && parts[0] == "CALIMERO_EVENT_DEPLOY",
             "Untrusted proof, deploy_bridge_token receipt proof required"
         );
 
@@ -187,7 +185,7 @@ impl FungibleTokenConnector {
             .split(":")
             .collect();
         require!(
-            parts.len() == 4 && parts[0] == CALIMERO_EVENT,
+            parts.len() == 4 && parts[0] == "CALIMERO_EVENT_BURN",
             "Untrusted proof, burn receipt proof required"
         );
         let destination_contract = parts[1];
