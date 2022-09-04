@@ -1,0 +1,31 @@
+[package]
+name = "xsc_connector"
+version = "0.1.0"
+authors = ["Calimero Limited <info@calimero.network>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+admin_controlled = { path = "../admin_controlled" }
+utils = { path = "../utils" }
+types = { path = "../types" }
+near-sdk = "4.0.0"
+base64 = "0.13"
+
+[dev-dependencies]
+workspaces = "0.4.1"
+tokio = { version = "1.18.1", features = ["full"] }
+near-units = "0.2.0"
+test_utils = { path = "../test_utils" }
+
+[profile.release]
+codegen-units = 1
+# Tell `rustc` to optimize for small code size.
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+# Opt into extra safety checks on arithmetic operations https://stackoverflow.com/a/64136471/249801
+overflow-checks = true
