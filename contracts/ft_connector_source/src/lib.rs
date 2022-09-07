@@ -189,20 +189,13 @@ impl FungibleTokenConnector {
             "Untrusted proof, burn receipt proof required"
         );
         let destination_contract = parts[1];
-        let destination_receiver_account = parts[2];
+        let ft_token_receiver_account = parts[2];
         let amount = U128(parts[3].parse::<u128>().unwrap());
 
         let ft_token_contract_account: AccountId = self
             .contracts_mapping
             .get(&destination_contract.parse().unwrap())
             .unwrap();
-        let ft_token_receiver_account: String = format!(
-            "{}{}",
-            destination_receiver_account
-                .strip_suffix(&self.destination_master_account.to_string())
-                .unwrap_or(&destination_receiver_account),
-            self.source_master_account
-        );
 
         let promise_prover = env::promise_create(
             self.prover_account.clone(),

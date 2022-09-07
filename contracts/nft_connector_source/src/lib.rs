@@ -240,7 +240,7 @@ impl NonFungibleTokenConnector {
             "Untrusted proof, burn receipt proof required"
         );
         let destination_contract = parts[1];
-        let destination_receiver_account = parts[2];
+        let nft_token_receiver_account = parts[2];
         let token_id = std::str::from_utf8(&base64::decode(parts[3]).unwrap())
             .unwrap()
             .to_owned();
@@ -249,13 +249,6 @@ impl NonFungibleTokenConnector {
             .contracts_mapping
             .get(&destination_contract.parse().unwrap())
             .unwrap();
-        let nft_token_receiver_account: String = format!(
-            "{}{}",
-            destination_receiver_account
-                .strip_suffix(&self.destination_master_account.to_string())
-                .unwrap_or(&destination_receiver_account),
-            self.source_master_account
-        );
 
         let promise_prover = env::promise_create(
             self.prover_account.clone(),
