@@ -135,20 +135,13 @@ impl NonFungibleTokenConnector {
             "Untrusted proof, lock receipt proof required"
         );
         let nft_token_contract_account = parts[1];
-        let source_receiver_account = parts[2];
+        let nft_token_receiver_account = parts[2];
         let token_id = std::str::from_utf8(&base64::decode(parts[3]).unwrap())
             .unwrap()
             .to_owned();
         let token_metadata: TokenMetadata =
             serde_json::from_str(std::str::from_utf8(&base64::decode(parts[4]).unwrap()).unwrap())
                 .unwrap();
-        let nft_token_receiver_account = format!(
-            "{}{}",
-            source_receiver_account
-                .strip_suffix(&self.source_master_account.to_string())
-                .unwrap_or(&source_receiver_account),
-            self.destination_master_account
-        );
 
         let promise_prover = env::promise_create(
             self.prover_account.clone(),
