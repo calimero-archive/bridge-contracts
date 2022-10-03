@@ -11,18 +11,14 @@ use utils::{hashes, Hash, Hashable};
 
 use near_sdk::PublicKey;
 
-const BRIDGE_TOKEN_BINARY: &'static [u8] = include_bytes!(std::env!(
-    "BRIDGE_TOKEN",
-    "Set BRIDGE_TOKEN to be the path of the bridge token binary"
-));
-
 const NO_DEPOSIT: Balance = 0;
 
 /// Initial balance for the BridgeToken contract to cover storage and related.
 const BRIDGE_TOKEN_INIT_BALANCE: Balance = 20_000_000_000_000_000_000_000_000; // 20e24yN, 20N
 
 /// Gas to initialize BridgeToken contract.
-const BRIDGE_TOKEN_NEW: Gas = Gas(50_000_000_000_000);
+const BRIDGE_TOKEN_NEW: Gas = Gas(80_000_000_000_000);
+const BRIDGE_TOKEN_COMPLETE: Gas = Gas(20_000_000_000_000);
 
 /// Gas to call mint method on bridge token.
 const MINT_GAS: Gas = Gas(30_000_000_000_000);
@@ -45,10 +41,10 @@ const PAUSE_DEPOSIT: Mask = 1 << 1;
 pub struct FungibleTokenConnector {
     /// The account of the prover that we can use to prove
     pub prover_account: AccountId,
-    source_master_account: AccountId,
-    destination_master_account: AccountId,
     /// The account of the locker on other network that is used to lock FT
     pub locker_account: Option<AccountId>,
+    /// The account of the deployer for bridge token
+    pub deployer_account: Option<AccountId>,
     /// Hashes of the events that were already used.
     pub used_events: UnorderedSet<Hash>,
     /// Public key of the account deploying connector.
@@ -65,23 +61,18 @@ pub struct FungibleTokenConnector {
 impl FungibleTokenConnector {
     /// Initializes the contract.
     /// `prover_account`: NEAR account of the Near Prover contract;
-    /// `source_master_account`: NEAR master account on source network, ex. 'testnet'
-    /// `destination_master_account`: NEAR master account on this network, ex. 'shard.calimero.testnet'
     #[init]
     pub fn new(
         prover_account: AccountId,
-        source_master_account: AccountId,
-        destination_master_account: AccountId,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         Self {
             prover_account,
-            source_master_account,
-            destination_master_account,
             used_events: UnorderedSet::new(b"u".to_vec()),
             contracts_mapping: UnorderedMap::new(b"c".to_vec()),
             all_contracts: UnorderedSet::new(b"a".to_vec()),
             locker_account: None,
+            deployer_account: None,
             owner_pk: env::signer_account_pk(),
             paused: Mask::default(),
         }
@@ -98,6 +89,20 @@ impl FungibleTokenConnector {
             env::attached_deposit()
                 >= env::storage_byte_cost() * (current_storage - initial_storage),
             "Not enough attached deposit to complete network connection"
+        );
+    }
+
+    #[payable]
+    pub fn set_deployer(&mut self, deployer_account: AccountId) {
+        near_sdk::assert_self();
+        require!(self.deployer_account.is_none());
+        let initial_storage = env::storage_usage() as u128;
+        self.deployer_account = Some(deployer_account);
+        let current_storage = env::storage_usage() as u128;
+        require!(
+            env::attached_deposit()
+                >= env::storage_byte_cost() * (current_storage - initial_storage),
+            "Not enough attached deposit to complete initialization"
         );
     }
 
@@ -199,7 +204,7 @@ impl FungibleTokenConnector {
                 MINT_GAS,
             )
         } else {
-            // TODO figure out why this fails with gas
+            // TODO figure out why this fails with gas or removeand panic
             let deploy_promise = env::promise_create(
                 env::current_account_id(),
                 "deploy_bridge_token",
@@ -270,18 +275,8 @@ impl FungibleTokenConnector {
         near_sdk::assert_self();
         self.assert_not_paused(PAUSE_DEPLOY_TOKEN);
 
-        let bridge_token_account_id = AccountId::new_unchecked(format!(
-            "{}.{}",
-            source_address
-                .strip_suffix(&format!(".{}", self.source_master_account.to_string()))
-                .unwrap_or(&source_address)
-                .replace(".", "_"),
-            env::current_account_id()
-        ));
         let initial_storage = env::storage_usage();
-        self.contracts_mapping
-            .insert(&source_address.parse().unwrap(), &bridge_token_account_id);
-        self.all_contracts.insert(&bridge_token_account_id);
+        // TODO calculate future storage usage 
         let required_deposit = Balance::from(initial_storage - initial_storage)
             * env::storage_byte_cost()
             + BRIDGE_TOKEN_INIT_BALANCE;
@@ -290,23 +285,41 @@ impl FungibleTokenConnector {
             "Deposit too low"
         );
 
-        env::log_str(&format!("CALIMERO_EVENT_DEPLOY:{}:{}", source_address, bridge_token_account_id));
-
-        let promise = env::promise_batch_create(&bridge_token_account_id);
-        env::promise_batch_action_create_account(promise);
-        env::promise_batch_action_transfer(promise, BRIDGE_TOKEN_INIT_BALANCE);
-        env::promise_batch_action_add_key_with_full_access(promise, &self.owner_pk.clone(), 0);
-        env::promise_batch_action_deploy_contract(promise, &BRIDGE_TOKEN_BINARY.to_vec());
-        env::promise_batch_action_function_call(
-            // TODO resolve tests, currently fails due to Promise being used
-            promise,
-            "new",
-            &vec![],
-            NO_DEPOSIT,
-            BRIDGE_TOKEN_NEW,
+        let promise = env::promise_create(
+            self.deployer_account.clone().unwrap(),
+            "deploy_bridge_token",
+            &serde_json::to_vec(&(source_address.clone(),)).unwrap(),
+            required_deposit,
+            DEPLOY_GAS + BRIDGE_TOKEN_NEW,
         );
 
-        env::value_return(&serde_json::to_vec(&(bridge_token_account_id,)).unwrap());
+        env::promise_return(env::promise_then(
+            promise,
+            env::current_account_id(),
+            "complete_deployment",
+            &serde_json::to_vec(&(source_address,)).unwrap(),
+            NO_DEPOSIT,
+            BRIDGE_TOKEN_COMPLETE
+        ));
+    }
+
+    pub fn complete_deployment(&mut self, source_address: AccountId) {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let bridge_token_address = match env::promise_result(0) {
+            PromiseResult::Successful(x) => {
+                serde_json::from_slice::<Vec<AccountId>>(&x).unwrap()[0].clone()
+            }
+            _ => env::panic_str("Deploy failed1"),
+        };
+
+        env::log_str(&format!("CALIMERO_EVENT_DEPLOY:{}:{}", &source_address, bridge_token_address));
+        self.contracts_mapping
+            .insert(&source_address, &bridge_token_address);
+        self.all_contracts.insert(&bridge_token_address);
+
+        env::value_return(&serde_json::to_vec(&(bridge_token_address,)).unwrap());
     }
 }
 

@@ -38,10 +38,10 @@ const PAUSE_WITHDRAW: Mask = 1 << 0;
 #[near_bindgen]
 impl BridgeToken {
     #[init]
-    pub fn new() -> Self {
+    pub fn new(controller: AccountId) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         Self {
-            controller: env::predecessor_account_id(),
+            controller,
             token: FungibleToken::new(b"t".to_vec()),
             name: String::default(),
             symbol: String::default(),
