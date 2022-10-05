@@ -25,9 +25,6 @@ impl MockLightClient {
     }
 
     pub fn block_merkle_roots(&self, height: u64) -> Option<Hash> {
-        for (k, v) in self.merkle_roots.iter() {
-            env::log_str(format!("{} {:?}", k, v).as_str());
-        }
         match self.merkle_roots.get(&height) {
             Some(&x) => Some(x),
             None => None,

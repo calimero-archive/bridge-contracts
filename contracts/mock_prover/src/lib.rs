@@ -38,9 +38,6 @@ impl MockProver {
 
     pub fn check_hash(&self, hash: Hash, _height: u64) {
         near_sdk::assert_self();
-        for v in self.approved_hashes.iter() {
-            env::log_str(format!("{:?}", v).as_str());
-        }
         match self.approved_hashes.get(&hash) {
             Some(_) => env::value_return(&serde_json::to_vec(&(true,)).unwrap()),
             None => panic!("Not approved hash"),

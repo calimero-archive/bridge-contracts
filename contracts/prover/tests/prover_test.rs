@@ -154,6 +154,17 @@ mod prover {
         }
 
         #[tokio::test]
+        async fn proof9() {
+            proof_valid(
+                "proof9.json",
+                2238,
+                decode_hex("477243d6526e351ee0bea6f97fde49bdb7b71602279afd9f3591989f2d9ea79f")
+                    .try_into()
+                    .unwrap(),
+            ).await;
+        }
+
+        #[tokio::test]
         async fn proof10() {
             proof_valid(
                 "proof10.json",
