@@ -20,7 +20,7 @@ mod connector {
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/ft_connector_destination.wasm",
+                "./target/wasm32-unknown-unknown/release/ft_connector.wasm",
             )
                 .unwrap();
             let connector_contract = worker.dev_deploy(&connector_wasm).await.unwrap();
@@ -200,7 +200,7 @@ mod connector {
             assert!(balance_after_mint == "888");
 
             // create the account where the newly minted tokens are, so we can withdraw some amount
-            // TODO change froof to use dev-account so it can be created here
+            // TODO change proof to use dev-account so it can be created here
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "lala");
             let tla = workspaces::AccountId::try_from("testnet".to_string()).unwrap();
             let root_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
@@ -235,7 +235,7 @@ mod connector {
             let logs_from_withdraw = withdraw_result.logs();
             assert!(logs_from_withdraw.len() == 1);
 
-            // verify burn event happened, this event is emitted from the ft_connector_destination contract
+            // verify burn event happened, this event is emitted from the ft_connector contract
             let parts: Vec<&str> = logs_from_withdraw[0].split(":").collect();
             assert!(parts.len() == 4);
             assert!(parts[0] == "CALIMERO_EVENT_BURN");

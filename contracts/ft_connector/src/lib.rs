@@ -23,12 +23,24 @@ const BRIDGE_TOKEN_COMPLETE: Gas = Gas(20_000_000_000_000);
 /// Gas to call mint method on bridge token.
 const MINT_GAS: Gas = Gas(30_000_000_000_000);
 
+/// Gas to call ft_transfer_call when the target of deposit is a contract
+const FT_TRANSFER_CALL_GAS: Gas = Gas(80_000_000_000_000);
+
 /// Gas for deploying bridge token contract
 const DEPLOY_GAS: Gas = Gas(180_000_000_000_000);
 
 /// Gas to call finish deposit method.
 /// This doesn't cover the gas required for calling mint method.
 const FINISH_DEPOSIT_GAS: Gas = Gas(230_000_000_000_000);
+
+/// Gas to call verify_log_entry on prover.
+const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
+
+/// Gas to call register method on FT.
+const REGISTER_FT_GAS: Gas = Gas(50_000_000_000_000);
+
+/// Gas to call finish unlock method.
+const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
 
 /// Gas to call prove_outcome on prover.
 const PROVE_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
@@ -108,6 +120,186 @@ impl FungibleTokenConnector {
 
     pub fn view_mapping(&self, source_account: AccountId) -> Option<AccountId> {
         self.contracts_mapping.get(&source_account)
+    }
+
+    #[payable]
+    pub fn register_ft(&mut self, ft_address: AccountId, method: String) {
+        env::promise_return(env::promise_create(
+            ft_address,
+            &method,
+            &Vec::<u8>::new(),
+            env::attached_deposit(),
+            REGISTER_FT_GAS,
+        ))
+    }
+
+    /// Used when sending FT to other network
+    /// `msg` is expected to contain valid other network id
+    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> U128 {
+        self.lock(sender_id, amount, msg)
+    }
+
+    fn lock(&mut self, sender_id: AccountId, amount: U128, _msg: String) -> U128 {
+        env::log_str(&format!(
+            "CALIMERO_EVENT_LOCK:{}:{}:{}",
+            env::predecessor_account_id(),
+            sender_id,
+            amount.0
+        ));
+        U128(0)
+    }
+
+    #[payable]
+    pub fn map_contracts(&mut self, source_contract: AccountId, destination_contract: AccountId) {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let verification_success = match env::promise_result(0) {
+            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
+            _ => env::panic_str("Prover failed"),
+        };
+        require!(verification_success, "Failed to verify the proof");
+
+        self.contracts_mapping
+            .insert(&destination_contract, &source_contract);
+    }
+
+    pub fn register_ft_on_private(&mut self, proof: FullOutcomeProof, height: u64) {
+        require!(!self.locker_account.is_none());
+        require!(
+            proof.outcome_proof.outcome_with_id.outcome.executor_id
+                == self.locker_account.as_ref().unwrap().to_string(),
+            "Untrusted prover account, deploy_bridge_token receipt proof required"
+        );
+        let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
+        let parts: Vec<&str> = std::str::from_utf8(&event_log)
+            .unwrap()
+            .split(":")
+            .collect();
+        require!(
+            parts.len() == 3 && parts[0] == "CALIMERO_EVENT_DEPLOY",
+            "Untrusted proof, deploy_bridge_token receipt proof required"
+        );
+
+        let ft_token_contract_account_source: AccountId = parts[1].parse().unwrap();
+        let ft_token_contract_account_destination: AccountId = parts[2].parse().unwrap();
+
+        // check that account deployment was done by locker_account
+        let promise_prover = env::promise_create(
+            self.prover_account.clone(),
+            "prove_outcome",
+            &serde_json::to_vec(&(proof.clone(), height)).unwrap(),
+            NO_DEPOSIT,
+            VERIFY_LOG_ENTRY_GAS,
+        );
+
+        let promise_result = env::promise_then(
+            promise_prover,
+            env::current_account_id(),
+            "map_contracts",
+            &serde_json::to_vec(&(
+                ft_token_contract_account_source,
+                ft_token_contract_account_destination,
+            ))
+            .unwrap(),
+            env::attached_deposit(),
+            FINISH_DEPOSIT_GAS,
+        );
+
+        env::promise_return(promise_result)
+    }
+
+    /// Used when receiving FT from other network
+    #[payable]
+    pub fn unlock(&mut self, proof: FullOutcomeProof, height: u64) {
+        require!(!self.locker_account.is_none());
+        require!(
+            proof.outcome_proof.outcome_with_id.outcome.executor_id
+                == self.locker_account.as_ref().unwrap().to_string(),
+            "Untrusted prover account, burn receipt proof required"
+        );
+        let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
+        let parts: Vec<&str> = std::str::from_utf8(&event_log)
+            .unwrap()
+            .split(":")
+            .collect();
+        require!(
+            parts.len() == 4 && parts[0] == "CALIMERO_EVENT_BURN",
+            "Untrusted proof, burn receipt proof required"
+        );
+        let destination_contract = parts[1];
+        let ft_token_receiver_account = parts[2];
+        let amount = U128(parts[3].parse::<u128>().unwrap());
+
+        let ft_token_contract_account: AccountId = self
+            .contracts_mapping
+            .get(&destination_contract.parse().unwrap())
+            .unwrap();
+
+        let promise_prover = env::promise_create(
+            self.prover_account.clone(),
+            "prove_outcome",
+            &serde_json::to_vec(&(proof.clone(), height)).unwrap(),
+            NO_DEPOSIT,
+            VERIFY_LOG_ENTRY_GAS,
+        );
+
+        let promise_result = env::promise_then(
+            promise_prover,
+            env::current_account_id(),
+            "finish_unlock",
+            &serde_json::to_vec(&(
+                ft_token_contract_account,
+                ft_token_receiver_account,
+                amount,
+                proof,
+            ))
+            .unwrap(),
+            env::attached_deposit(),
+            FINISH_UNLOCK_GAS + MINT_GAS + FT_TRANSFER_CALL_GAS,
+        );
+
+        env::promise_return(promise_result)
+    }
+
+    /// Finish depositing once the proof was successfully validated. Can only be called by the contract
+    /// itself.
+    #[payable]
+    pub fn finish_unlock(
+        &mut self,
+        ft_token_contract_account: AccountId,
+        ft_token_receiver_account: AccountId,
+        amount: U128,
+        proof: FullOutcomeProof,
+    ) {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let verification_success = match env::promise_result(0) {
+            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
+            _ => env::panic_str("Prover failed"),
+        };
+        require!(verification_success, "Failed to verify the proof");
+
+        let required_deposit = self.record_proof(&proof);
+
+        require!(
+            env::attached_deposit() >= required_deposit,
+            "Deposit too low"
+        );
+
+        let memo = String::from(format!(
+            "Transfer from {}",
+            self.locker_account.as_ref().unwrap().to_string()
+        ));
+
+        env::promise_return(env::promise_create(
+            ft_token_contract_account,
+            "ft_transfer",
+            &serde_json::to_vec(&(ft_token_receiver_account, amount, Some(memo))).unwrap(),
+            near_sdk::ONE_YOCTO,
+            MINT_GAS,
+        ))
     }
 
     pub fn burn(&mut self, burner_id: AccountId, amount: u128) {

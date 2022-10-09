@@ -24,7 +24,7 @@ mod connector {
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/ft_connector_source.wasm",
+                "./target/wasm32-unknown-unknown/release/ft_connector.wasm",
             )
                 .unwrap();
             let connector_contract = worker.dev_deploy(&connector_wasm).await.unwrap();
@@ -293,7 +293,7 @@ mod connector {
             assert!(event_json["data"][0]["new_owner_id"] == connector.id().to_string());
             assert!(event_json["data"][0]["old_owner_id"] == ALICE_ACCOUNT_ID);
 
-            // verify lock event happened, this event is emitted from the ft_connector_source contract
+            // verify lock event happened, this event is emitted from the ft_connector contract
             let parts: Vec<&str> = lock_execution_details.logs()[1].split(":").collect();
             assert!(parts.len() == 4);
             assert!(parts[0] == "CALIMERO_EVENT_LOCK");
