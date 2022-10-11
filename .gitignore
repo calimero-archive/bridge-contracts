@@ -351,3 +351,7 @@ Cargo.lock
 .build/
 
 neardev
+
+**/.idea/workspace.xml
+
+**/.DS_Store

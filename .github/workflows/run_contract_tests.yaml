@@ -1,0 +1,47 @@
+on: [push]
+
+name: CI
+
+jobs:
+  build_and_test:
+    name: Contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v2
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown      
+
+      - name: Run light client tests
+        run: cd contracts/light_client; cargo test -- --nocapture
+
+      - name: Run prover tests
+        run: |
+          cd contracts/mock_light_client
+          ./build.sh
+          cd ../prover
+          ./build.sh
+          cargo test -- --nocapture
+
+      - name: Run types tests
+        run: cd contracts/types; cargo test -- --nocapture
+
+      - name: Run ft_connector tests
+        run: |
+          cd contracts/ft_bridge_token
+          ./build.sh
+          ./deploy.sh
+          cd ../bridge_token_deployer
+          ./build.sh
+          cd ../mock_prover
+          ./build.sh
+          cd ../ft_connector
+          ./build.sh
+          cargo test -- --nocapture
