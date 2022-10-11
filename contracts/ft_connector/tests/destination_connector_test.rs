@@ -11,6 +11,9 @@ mod connector {
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
 
+        const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1661337044068-74633164378532";
+        const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922485";
+
         async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
             // deploy contracts
@@ -28,7 +31,10 @@ mod connector {
                 "../bridge_token_deployer/target/wasm32-unknown-unknown/release/bridge_token_deployer.wasm",
             )
                 .unwrap();
-            let deployer_contract = worker.dev_deploy(&deployer_wasm).await.unwrap();
+
+            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_deployer");
+            let tla = workspaces::AccountId::try_from("deployer.test.near".to_string()).unwrap();
+            let deployer_contract = worker.create_tla_and_deploy(tla, sec, &deployer_wasm).await.unwrap().unwrap();
 
             // initialize contracts
             prover_contract
@@ -86,7 +92,7 @@ mod connector {
                 .await
                 .unwrap();
 
-            let proof = &file_as_json::<FullOutcomeProof>(&format!("{}{}", file_prefix, "proof.json")).unwrap();
+            let proof = &file_as_json::<FullOutcomeProof>(&format!("destination_test_assets/{}{}", file_prefix, "proof.json")).unwrap();
 
             connector
                 .call(&worker, "set_locker")
@@ -103,7 +109,7 @@ mod connector {
             connector
                 .call(&worker, "deploy_bridge_token")
                 .args_json(json!({
-                    "source_address": "usdn.testnet",
+                    "source_address": FT_CONTRACT_ACCOUNT_ID,
                 }))
                 .unwrap()
                 .deposit(parse_near!("50N"))
@@ -147,12 +153,12 @@ mod connector {
 
         async fn mint_case1() -> (Worker<Sandbox>, Contract, Contract, Contract, FullOutcomeProof) {
             transfer_ft(
-                "mint_",
+                "lock_",
                 99152413,
-                decode_hex("19171804be07b83588399e9d0dc6864197a1d676f7b5f6c59991b7857809f2b7")
+                decode_hex("4bc8e71f81444a63a7be8044b18a50d6e3b4120ff3de1fe45dc4acb2f38d2427")
                     .try_into()
                     .unwrap(),
-                "connector.lucija.igi.testnet".to_string(),
+                "ft_source_connector.n.apptest-development.testnet".to_string(),
             ).await
         }
 
@@ -177,7 +183,7 @@ mod connector {
                 .view(connector.id(),
                       "view_mapping",
                       serde_json::json!({
-                        "source_account": "usdn.testnet"
+                        "source_account": FT_CONTRACT_ACCOUNT_ID
                       }).to_string()
                           .into_bytes(),
                 )
@@ -190,40 +196,27 @@ mod connector {
                 bridged_ft_contract_id,
                 "ft_balance_of",
                 serde_json::to_vec(&serde_json::json!({
-                    "account_id": "igi.testnet"
+                    "account_id": ALICE_ACCOUNT_ID
                 })).unwrap())
                 .await.unwrap()
                 .json().unwrap();
 
-            println!("{:?}", balance_after_mint);
-
-            assert!(balance_after_mint == "888");
+            assert!(balance_after_mint == "12345");
 
             // create the account where the newly minted tokens are, so we can withdraw some amount
-            // TODO change proof to use dev-account so it can be created here
-            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "lala");
-            let tla = workspaces::AccountId::try_from("testnet".to_string()).unwrap();
-            let root_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
-
-            let secret_for_subaccount = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "lala_sub");
-            let account_with_bridged_fts = root_account.create_subaccount(&worker, "igi")
-                .initial_balance(parse_near!("25") as u128)
-                .keys(secret_for_subaccount)
-                .transact()
-                .await
-                .unwrap()
-                .unwrap();
-            // END OF TODO
+            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_2");
+            let tla = workspaces::AccountId::try_from(ALICE_ACCOUNT_ID.to_string()).unwrap();
+            let alice_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
 
             // call withdraw on the bridged FT
             let withdraw_result =
-                account_with_bridged_fts.call(
+                alice_account.call(
                     &worker,
                     bridged_ft_contract_id,
                     "withdraw",
-                    )
+                )
                     .args_json(json!({
-                        "amount": "88"
+                        "amount": "345"
                     }))
                     .unwrap()
                     .gas(parse_gas!("300 Tgas") as u64)
@@ -240,19 +233,19 @@ mod connector {
             assert!(parts.len() == 4);
             assert!(parts[0] == "CALIMERO_EVENT_BURN");
             assert!(parts[1] == bridged_ft_contract_id_str);
-            assert!(parts[2] == account_with_bridged_fts.id().to_string());
-            assert!(parts[3] == "88");
+            assert!(parts[2] == alice_account.id().to_string());
+            assert!(parts[3] == "345");
 
             let balance_after_burn: String = worker.view(
                 bridged_ft_contract_id,
                 "ft_balance_of",
                 serde_json::to_vec(&serde_json::json!({
-                    "account_id": "igi.testnet"
+                    "account_id": ALICE_ACCOUNT_ID
                 })).unwrap())
                 .await.unwrap()
                 .json().unwrap();
 
-            assert!(balance_after_burn == "800");
+            assert!(balance_after_burn == "12000");
         }
     }
 }

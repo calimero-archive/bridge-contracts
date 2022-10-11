@@ -29,7 +29,7 @@ mod connector {
                 .unwrap();
             let connector_contract = worker.dev_deploy(&connector_wasm).await.unwrap();
             let fungible_token_wasm = std::fs::read(
-                "./tests/fungible_token.wasm",
+                "./tests/source_test_assets/fungible_token.wasm",
             )
                 .unwrap();
 
@@ -176,7 +176,7 @@ mod connector {
                 .await
                 .unwrap();
 
-            let deploy_proof = &file_as_json::<FullOutcomeProof>("deploy_proof.json").unwrap();
+            let deploy_proof = &file_as_json::<FullOutcomeProof>("source_test_assets/deploy_proof.json").unwrap();
 
             prover
                 .call(&worker, "prove_outcome")
@@ -261,7 +261,7 @@ mod connector {
             let register_execution_details = register_ft(&worker, &prover, &connector, &fungible_token).await;
             assert!(register_execution_details.is_success());
 
-            let burn_proof = &file_as_json::<FullOutcomeProof>("burn_proof.json").unwrap();
+            let burn_proof = &file_as_json::<FullOutcomeProof>("source_test_assets/burn_proof.json").unwrap();
             let unlock_execution_details = unlock_ft(&worker, &prover, &connector, &fungible_token, &burn_proof).await;
             assert!(unlock_execution_details.is_success());
 

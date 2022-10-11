@@ -1,87 +1,103 @@
 {
   "block_header_lite": {
     "inner_lite": {
-      "block_merkle_root": "HN7EFRudGy8NPpZsVNAj7gRr1Kkxm4quQaB1uEaphqTn",
-      "epoch_id": "9t4ymSG9A468YAWqztKciAywJ2bCLTzaetk4BZf9bNGf",
-      "height": 99152107,
-      "next_bp_hash": "HbzrvRYaPdL1PD4gy6LU3P7NAgnMoVzJbEUMvWPoBzH1",
-      "next_epoch_id": "HbNhsK1wx1zGxX2DHxzVojqKtagRvrb5WguErau28vLg",
-      "outcome_root": "C6DSWgA9Qm3pCRtKxYMkSvooiwF2VPrCnqqK9DGScSyT",
-      "prev_state_root": "ACQLEQmWp4evaxLWgBjbLSaLAqh2CBCNTLoZTaHRdnEj",
-      "timestamp": 1662070316750396435,
-      "timestamp_nanosec": "1662070316750396435"
+      "block_merkle_root": "6Z1N9Vb8E9L37swWff4R1mpfxN79Lkt69e2HEwe7giAZ",
+      "epoch_id": "9LnSKx9MNrtxbnRKcaLCVmFYXENyR6784V2d5QK892XE",
+      "height": 101957130,
+      "next_bp_hash": "EXnDapChsetdthyfkensxbCJ2LFwVnQ5Q5Y35R3nmscA",
+      "next_epoch_id": "8bsE4Ef77tD3jiScjsmang5yjRcyrHQDb8LyQMR3WQUC",
+      "outcome_root": "Ap4ZDZKhMcwEw3gcaAtQ6qRTP3wboWpjAzRFGADwAZ6w",
+      "prev_state_root": "E6AiXQsGfSFURj7KSWi1GX86QvbRFVc5rQ1aqJMnB5Km",
+      "timestamp": 1665001774371077443,
+      "timestamp_nanosec": "1665001774371077443"
     },
-    "inner_rest_hash": "8FsiKyLPYjQt9YTUNqR6we3KuPTnTVUDo6xMhFeuAm9n",
-    "prev_block_hash": "AwrUbPkGbys2u1RemsFuarS9m21L47MPgXrRGVc2WN7L"
+    "inner_rest_hash": "HYi9u4yfZRY535fGupwjMCjFkPiDa9iQXx81M2KQWbF6",
+    "prev_block_hash": "3MPf9k2kend2AqN77sh8B1j2gfCMTQYRNyZ4GfUVrhEo"
   },
   "block_proof": [
     {
       "direction": "Left",
-      "hash": "AwrUbPkGbys2u1RemsFuarS9m21L47MPgXrRGVc2WN7L"
+      "hash": "3MPf9k2kend2AqN77sh8B1j2gfCMTQYRNyZ4GfUVrhEo"
+    },
+    {
+      "direction": "Left",
+      "hash": "Gnj3NUuMRe3dnHogFZVcCferNGQQr9hZahj2QroXRNa3"
+    },
+    {
+      "direction": "Left",
+      "hash": "EnWuCrKbeo4EiKev35K7tH6a5qg9uNf4h43RzBnEXBEB"
+    },
+    {
+      "direction": "Left",
+      "hash": "AJuhPZJHWEGT4zwt72qojv9SRenpT6EK5XFwEkEZo33a"
+    },
+    {
+      "direction": "Left",
+      "hash": "AKpkz8jq2acrgW7SGodcW7o2NgQjqCMuNyVrsTMe6ZX8"
     },
     {
       "direction": "Right",
-      "hash": "4z6bh8xQJk6LiC1AxgY2gU4zrmxNNakaYdEjMzNfntVq"
-    },
-    {
-      "direction": "Left",
-      "hash": "CZ53z2kBqUbnDeCDZfzoxvK63A3C6CE4a6Zt16byNUbb"
+      "hash": "9j99QnowrPLEBZ8F6GJihV12pjAur1ogACyiH5yMuVEE"
     },
     {
       "direction": "Right",
-      "hash": "2ZjHsZ8ovhmKd8RN7tgEYAArwiQFmCURd7fEfbugJdGC"
+      "hash": "2qey1BdmbUTFrBsdZduuy6DAanmNsqPK211qFdxi2twJ"
+    },
+    {
+      "direction": "Left",
+      "hash": "Ecpp78jwT3HGvo3KAgRmeJwTVjr7D6pnHzv9CWwd11La"
+    },
+    {
+      "direction": "Left",
+      "hash": "E5CnUib3ZxnxfCbA8QmUzBVLCTUQxUc6rgcrrCooTLby"
+    },
+    {
+      "direction": "Left",
+      "hash": "BZoJq184F58YKkDrhrQJwWiFw8CEssk8tfML8wURZNWj"
+    },
+    {
+      "direction": "Left",
+      "hash": "7zVhGPVZpyWugwmP1W7j76LH8kaGrw6pEqGqE1dbopAA"
     },
     {
       "direction": "Right",
-      "hash": "A26GAVm7kxnBpvun9W7jSmPJUU6stiQMvEjjFz73mrp8"
-    },
-    {
-      "direction": "Left",
-      "hash": "8W2h2dieC8htMDz5CEcztUYHfpPS47KQjctRfDUYpWpS"
+      "hash": "DvDnXCeSSGuV4RaCcJzFf25Mp319iUXGhiwHbHcjGAeJ"
     },
     {
       "direction": "Right",
-      "hash": "YEs8ormyZ9bdnZkRUe4Vow7YVbDadNRyDu4wpthxuSU"
+      "hash": "9rLjUEpa58JkLTCD3h3CSwHhDPVWCB67v2WDdqi5kmKi"
+    },
+    {
+      "direction": "Left",
+      "hash": "8vQPibZfZ6E2k6TkkHwUZeW8GzAXwUpFKAoh8ckF6qkE"
     },
     {
       "direction": "Right",
-      "hash": "9kD5U2y6bvmadVcWavWmpoDh4S9XMcVruhCkbocAp5Gq"
+      "hash": "6C2iJ59NbL9zMA8Xc7XBuoAu5LEjQGVPRvybK6dE7663"
+    },
+    {
+      "direction": "Left",
+      "hash": "9VrDQ8urBveMzbCcrse1uhL6JQFePLjFuV8V1WPqSK89"
     },
     {
       "direction": "Right",
-      "hash": "DqgJREj6DschWd55uswv9rmDpFCHynTxU3iXNQwHKy3a"
+      "hash": "4cD1DUb6PkpHm4bNWnwDu5GvAZN5czsTtVhD7MmmLYJ9"
     },
     {
       "direction": "Left",
-      "hash": "DHdRWPgKVd4hieQjB8pEojyoudR3BwEzFztqPodUtyrR"
+      "hash": "9p8g2MZa27JG1U9fu79hEbDmY1MLBWfCNWYyB3zf4wLX"
+    },
+    {
+      "direction": "Right",
+      "hash": "Cyd2MRjPHaeDYAKuG6sjuEEs2HcnH3ffxto8jrbPFNGL"
     },
     {
       "direction": "Left",
-      "hash": "AxHoFW2916F2tv4P1ArtRxiPVwaWMC4t6jJfgTi57LFz"
+      "hash": "4xiVKFyAaKx2JSNGZ3xAojPssGwoVwNSsroFFZHjKvak"
     },
     {
       "direction": "Left",
-      "hash": "HkjUvNBNjc83SkjXUcGJJ83fVM47z6m4m8exp8WvA6Ym"
-    },
-    {
-      "direction": "Left",
-      "hash": "4L3C9ujPrYqa7uwZvri3d1MbAgpCdacY8rJGHyARi1YV"
-    },
-    {
-      "direction": "Left",
-      "hash": "FnyPh8FbKsaLgqUbeK2zQGuTcMTf3j9aEARDjPBhM67m"
-    },
-    {
-      "direction": "Left",
-      "hash": "GvMPXejFtV6mWEzjv5qxgxF1aTgNaLLwRNXJrrKiSwE4"
-    },
-    {
-      "direction": "Left",
-      "hash": "3gSxkfwCMUeAZLynJoVnF8f2CNiVeuS3tUtSHFPffs41"
-    },
-    {
-      "direction": "Left",
-      "hash": "GEA6LQrgtnsNUoCMRKnweHy7G287VV3x7MUdU88NpwwG"
+      "hash": "yxSr5HD8zXpYFVeWbE6bm88wYautgoFL3qysegeVDHH"
     },
     {
       "direction": "Left",
@@ -93,13 +109,13 @@
     }
   ],
   "outcome_proof": {
-    "block_hash": "2gwcmhuaRpUimQA5Qg1ygnmiMMKhst5QHxe8Kct2UrJJ",
-    "id": "Hk3eYb346pcwDzKWSWCB8WVbZSotK6pZr8Fsqw7Lucxr",
+    "block_hash": "66qFtuRXL7MrRBQtWTjqNaa48xHsTvr6HjHwy72Q4N1k",
+    "id": "WBW5aqSMVKhMSACAgWVqjjSvpdk7jgct4MsZy9DM6Jw",
     "outcome": {
-      "executor_id": "connector.lucija.igi.testnet",
-      "gas_burnt": 3545249982126,
+      "executor_id": "ft_source_connector.n.apptest-development.testnet",
+      "gas_burnt": 3432649024921,
       "logs": [
-        "CALIMERO_EVENT_LOCK:usdn.testnet:igi.testnet:888"
+        "CALIMERO_EVENT_LOCK:dev-1661337044068-74633164378532:dev-1656412997567-26565713922485:12345"
       ],
       "metadata": {
         "gas_profile": [
@@ -121,7 +137,7 @@
           {
             "cost": "CONTRACT_LOADING_BYTES",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "453053451000"
+            "gas_used": "452801370750"
           },
           {
             "cost": "LOG_BASE",
@@ -131,12 +147,12 @@
           {
             "cost": "LOG_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "633541968"
+            "gas_used": "1201089981"
           },
           {
             "cost": "READ_CACHED_TRIE_NODE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "54720000000"
+            "gas_used": "38760000000"
           },
           {
             "cost": "READ_MEMORY_BASE",
@@ -146,7 +162,7 @@
           {
             "cost": "READ_MEMORY_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "878107923"
+            "gas_used": "1045366575"
           },
           {
             "cost": "READ_REGISTER_BASE",
@@ -156,7 +172,7 @@
           {
             "cost": "READ_REGISTER_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "23654880"
+            "gas_used": "27301674"
           },
           {
             "cost": "STORAGE_READ_BASE",
@@ -171,7 +187,7 @@
           {
             "cost": "STORAGE_READ_VALUE_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "953870850"
+            "gas_used": "959481855"
           },
           {
             "cost": "STORAGE_WRITE_BASE",
@@ -181,7 +197,7 @@
           {
             "cost": "STORAGE_WRITE_EVICTED_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "5459942190"
+            "gas_used": "5492059497"
           },
           {
             "cost": "STORAGE_WRITE_KEY_BYTE",
@@ -191,12 +207,12 @@
           {
             "cost": "STORAGE_WRITE_VALUE_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "5273151630"
+            "gas_used": "5304170169"
           },
           {
             "cost": "TOUCHING_TRIE_NODE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "370344986298"
+            "gas_used": "257631294816"
           },
           {
             "cost": "UTF8_DECODING_BASE",
@@ -206,12 +222,12 @@
           {
             "cost": "UTF8_DECODING_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "13995862992"
+            "gas_used": "26533823589"
           },
           {
             "cost": "WASM_INSTRUCTION",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "35000862996"
+            "gas_used": "37699502676"
           },
           {
             "cost": "WRITE_MEMORY_BASE",
@@ -221,7 +237,7 @@
           {
             "cost": "WRITE_MEMORY_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "697285632"
+            "gas_used": "798065196"
           },
           {
             "cost": "WRITE_REGISTER_BASE",
@@ -231,34 +247,30 @@
           {
             "cost": "WRITE_REGISTER_BYTE",
             "cost_category": "WASM_HOST_COST",
-            "gas_used": "1558641240"
+            "gas_used": "1703100672"
           }
         ],
         "version": 1
       },
       "receipt_ids": [
-        "9FTEDEaM91EBAibxNBLHVSMbuBKNY5rCK1FnBGVokaLe"
+        "8ea4LQNQYB24FHjSEiGGxP1SVPjFjgQuZvppBVrgbDtz"
       ],
       "status": {
         "SuccessValue": "IjAi"
       },
-      "tokens_burnt": "354524998212600000000"
+      "tokens_burnt": "343264902492100000000"
     },
     "proof": [
       {
         "direction": "Right",
-        "hash": "712CnHBniuekPQQfrMrkZp73HLRGK3ugJ2J7p9fWBpeY"
-      },
-      {
-        "direction": "Right",
-        "hash": "88HkYAkjH6kiZ9RtPJLZs1PEB88HtmRBkWQ8NGYnRc4n"
+        "hash": "936YfNuYmtD4vkR6hX5wQ6b6w8YuucxT8udsNExsMPwH"
       }
     ]
   },
   "outcome_root_proof": [
     {
       "direction": "Right",
-      "hash": "3e8UjuXEnxfaZucaogiSpDmqCAPxfzW2rHVcFmFHqmdG"
+      "hash": "BFR9eGWcdoJDzRHuLM75UKuM7fg1LZW9a6GdXkFh7Umd"
     },
     {
       "direction": "Left",
