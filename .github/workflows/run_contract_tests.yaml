@@ -33,6 +33,12 @@ jobs:
       - name: Run types tests
         run: cd contracts/types; cargo test -- --nocapture
 
+      - name: Run connector_permissions tests
+        run: |
+          cd contracts/connector_permissions
+          ./build.sh
+          cargo test -- --nocapture
+
       - name: Run ft_connector tests
         run: |
           cd contracts/ft_bridge_token
