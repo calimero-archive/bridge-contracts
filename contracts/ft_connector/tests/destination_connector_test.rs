@@ -28,7 +28,7 @@ mod connector {
                 .unwrap();
             let connector_contract = worker.dev_deploy(&connector_wasm).await.unwrap();
             let deployer_wasm = std::fs::read(
-                "../bridge_token_deployer/target/wasm32-unknown-unknown/release/bridge_token_deployer.wasm",
+                "../wasm/ft_bridge_token_deployer.wasm",
             )
                 .unwrap();
 

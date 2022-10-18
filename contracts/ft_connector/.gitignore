@@ -1,1 +1,2 @@
 *.wasm
+!tests/source_test_assets/fungible_token.wasm

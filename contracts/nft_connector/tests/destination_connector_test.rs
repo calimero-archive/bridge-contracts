@@ -1,16 +1,14 @@
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod connector {
     mod test {
-        use std::thread::sleep;
-        use near_sdk::{AccountId, serde_json};
+        use near_sdk::serde_json;
         use near_sdk::json_types::U128;
         use near_sdk::serde_json::json;
         use near_units::{parse_gas, parse_near};
         use test_utils::file_as_json;
-        use utils::hashes::{decode_hex, deserialize_hash};
+        use utils::hashes::decode_hex;
         use utils::Hash;
-        use types::{FullOutcomeProof, TransactionStatus};
-        use types::signature::SecretKey;
+        use types::FullOutcomeProof;
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
 
@@ -26,7 +24,7 @@ mod connector {
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/nft_connector_destination.wasm",
+                "./target/wasm32-unknown-unknown/release/nft_connector.wasm",
             )
                 .unwrap();
 
@@ -35,15 +33,30 @@ mod connector {
             let tla = workspaces::AccountId::try_from("connector.test.near".to_string()).unwrap();
             let connector_contract = worker.create_tla_and_deploy(tla, sec, &connector_wasm).await.unwrap().unwrap();
 
+            let deployer_wasm = std::fs::read(
+                "../wasm/nft_bridge_token_deployer.wasm",
+            )
+                .unwrap();
 
-            let temp_account_to_feed_connector_with_more_funds = worker.dev_create_account()
-                .await
-                .unwrap();
+            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_deployer");
+            let tla = workspaces::AccountId::try_from("deployer.test.near".to_string()).unwrap();
+            let deployer_contract = worker.create_tla_and_deploy(tla, sec, &deployer_wasm).await.unwrap().unwrap();
+
+            for _ in 0..10 {
+                let temp_account_to_feed_connector_with_more_funds = worker.dev_create_account()
+                    .await
+                    .unwrap();
             
-            temp_account_to_feed_connector_with_more_funds
-                .transfer_near(&worker, connector_contract.id(), parse_near!("99 N"))
-                .await
-                .unwrap();
+                temp_account_to_feed_connector_with_more_funds
+                    .transfer_near(&worker, deployer_contract.id(), parse_near!("49 N"))
+                    .await
+                    .unwrap();
+                
+                temp_account_to_feed_connector_with_more_funds
+                    .transfer_near(&worker, connector_contract.id(), parse_near!("49 N"))
+                    .await
+                    .unwrap();
+            }
 
             // initialize contracts
             prover_contract
@@ -58,9 +71,28 @@ mod connector {
                 .call(&worker, "new")
                 .args_json(json!({
                 "prover_account": prover_contract.id().to_string(),
-                "source_master_account": "not_important_remove",
-                "destination_master_account": "not_important_remove"
             }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
+            deployer_contract
+                .call(&worker, "new")
+                .args_json(json!({
+                    "bridge_account": connector_contract.id().to_string(),
+                    "source_master_account": "testnet",
+                }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
+            connector_contract
+                .call(&worker, "set_deployer")
+                .args_json(json!({
+                    "deployer_account": deployer_contract.id().to_string(),
+                }))
                 .unwrap()
                 .transact()
                 .await
@@ -81,7 +113,7 @@ mod connector {
                 .await
                 .unwrap();
 
-            let proof = &file_as_json::<FullOutcomeProof>(&format!("{}{}", file_prefix, "proof.json")).unwrap();
+            let proof = &file_as_json::<FullOutcomeProof>(&format!("destination_test_assets/{}{}", file_prefix, "proof.json")).unwrap();
 
             connector
                 .call(&worker, "set_locker")
@@ -124,8 +156,8 @@ mod connector {
             (worker, prover, connector, proof.clone())
         }
 
-        async fn reuse_proof(worker: Worker<Sandbox>, prover: Contract, connector: Contract, proof: FullOutcomeProof, block_height: u64) {
-            let reused_proof_execution_details = connector
+        async fn reuse_proof(worker: Worker<Sandbox>, _prover: Contract, connector: Contract, proof: FullOutcomeProof, block_height: u64) {
+            let _reused_proof_execution_details = connector
                 .call(&worker, "mint")
                 .args_json(json!({
                 "proof": proof,
@@ -165,7 +197,7 @@ mod connector {
 
         #[tokio::test]
         async fn test_withdraw() {
-            let (worker, prover, connector, proof) = mint_case1().await;
+            let (worker, _prover, connector, _proof) = mint_case1().await;
 
             let bridged_nft_contract_id_str: String = worker
                 .view(connector.id(),
@@ -245,17 +277,16 @@ mod connector {
                 .json().unwrap();
             assert!(nft_total_supply_after_burn == U128(0));
 
-            // TODO: this should pass once tokens_per_owner cleared
-            // let tokens_after_burn: serde_json::Value = worker.view(
-            //     bridged_nft_contract_id,
-            //     "nft_tokens_for_owner",
-            //     serde_json::to_vec(&serde_json::json!({
-            //         "account_id": ALICE_ACCOUNT_ID
-            //     })).unwrap())
-            //     .await.unwrap()
-            //     .json().unwrap();
-            //println!("After burn {}", tokens_after_burn);
-            //assert!(tokens_after_burn.to_string() == "[]");
+            let tokens_after_burn: serde_json::Value = worker.view(
+                 bridged_nft_contract_id,
+                 "nft_tokens_for_owner",
+                 serde_json::to_vec(&serde_json::json!({
+                     "account_id": ALICE_ACCOUNT_ID
+                 })).unwrap())
+                 .await.unwrap()
+                 .json().unwrap();
+            println!("After burn {}", tokens_after_burn);
+            assert!(tokens_after_burn.to_string() == "[]");
         }
     }
 }

@@ -191,7 +191,7 @@ mod connector {
                 .unwrap();
 
             connector
-                .call(&worker, "register_ft_on_private")
+                .call(&worker, "register_on_other")
                 .args_json(json!({
                 "proof": deploy_proof,
                 "height": 9999, // not important for mock prover

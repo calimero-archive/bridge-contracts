@@ -10,7 +10,6 @@ use near_sdk::{
     assert_one_yocto, env, ext_contract, near_bindgen, AccountId, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
-use near_sdk::collections::{LookupMap, UnorderedSet};
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -28,7 +27,7 @@ pub struct BridgeToken {
 
 #[ext_contract(ext_connector)]
 trait ExtConnector {
-    fn burn(&self, burner_id: AccountId, token_id: &TokenId);
+    fn burn(&self, burner_id: AccountId, transferable: &TokenId);
 }
 
 /// Gas to call burn method on controller.
@@ -39,10 +38,10 @@ const PAUSE_WITHDRAW: Mask = 1 << 0;
 #[near_bindgen]
 impl BridgeToken {
     #[init]
-    pub fn new() -> Self {
+    pub fn new(controller: AccountId) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         Self {
-            controller: env::predecessor_account_id(),
+            controller,
             token: NonFungibleToken::new(
                 b"t".to_vec(),
                 env::current_account_id(),
@@ -108,20 +107,29 @@ impl BridgeToken {
             owner,
             "Only owner can call withdraw"
         );
+        let owner = owner.as_ref().unwrap();
 
         let burn_promise = ext_connector::ext(self.controller.clone())
             .with_static_gas(BURN_GAS)
             .burn(env::predecessor_account_id(), &token_id);
 
         self.token.owner_by_id.remove(&token_id);
-        // TODO: clear the tokens_per_owner map as well
-        // if let Some(tokens_per_owner) = &mut self.token.tokens_per_owner {
-        //     if let Some(owner_tokens) = &mut tokens_per_owner.get(&owner.as_ref().unwrap()) {
-        //         owner_tokens.remove(&token_id);
-        //     }
-        // }
+
+        if let Some(tokens_per_owner) = &mut self.token.tokens_per_owner {
+            // owner_tokens should always exist, so call `unwrap` without guard
+            let mut owner_tokens = tokens_per_owner.get(&owner).unwrap_or_else(|| {
+                env::panic_str("Unable to access tokens per owner in unguarded call.")
+            });
+            owner_tokens.remove(&token_id);
+            if owner_tokens.is_empty() {
+                tokens_per_owner.remove(&owner);
+            } else {
+                tokens_per_owner.insert(&owner, &owner_tokens);
+            }
+        }
+
         NftBurn {
-            owner_id: &owner.unwrap(),
+            owner_id: &owner,
             token_ids: &[&token_id],
             memo: None,
             authorized_id: None, 

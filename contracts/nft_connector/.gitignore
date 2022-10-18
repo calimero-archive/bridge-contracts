@@ -1,0 +1,2 @@
+*.wasm
+!tests/source_test_assets/non_fungible_token.wasm

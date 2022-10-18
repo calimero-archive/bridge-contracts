@@ -489,6 +489,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "connector_base"
+version = "0.1.0"
+dependencies = [
+ "near-sdk",
+ "types",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -832,6 +840,7 @@ version = "0.1.0"
 dependencies = [
  "admin_controlled",
  "base64 0.13.0",
+ "connector_base",
  "near-sdk",
  "near-units",
  "serde_json",

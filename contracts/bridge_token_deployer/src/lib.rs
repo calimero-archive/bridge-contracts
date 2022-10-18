@@ -11,7 +11,7 @@ const BRIDGE_TOKEN_BINARY: &'static [u8] = include_bytes!(std::env!(
 const NO_DEPOSIT: Balance = 0;
 
 /// Initial balance for the BridgeToken contract to cover storage and related.
-const BRIDGE_TOKEN_INIT_BALANCE: Balance = 20_000_000_000_000_000_000_000_000; // 20e24yN, 20N
+const BRIDGE_TOKEN_INIT_BALANCE: Balance = 30_000_000_000_000_000_000_000_000; // 30e24yN, 30N
 
 /// Gas to initialize BridgeToken contract.
 const BRIDGE_TOKEN_NEW: Gas = Gas(50_000_000_000_000);
@@ -23,9 +23,16 @@ const BRIDGE_TOKEN_COMPLETE: Gas = Gas(20_000_000_000_000);
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct BridgeTokenDeployer {
     /// The account of the bridge that will deploy 
-    pub bridge_account: AccountId,
+    bridge_account: AccountId,
     /// NEAR master account on source network, ex. 'testnet'
-    pub source_master_account: AccountId,
+    /// Used to have nicer names in bridged tokens by stripping suffix from token name.
+    /// ex. wrap.testnet mapped to wrap.ft_bridged.shard.calimero.testnet 
+    /// instead of wrap_testnet.ft_bridged.shard.calimero.testnet.
+    /// 
+    /// If token is bridged that has different master account it will still be bridged normally
+    /// but will have different name.
+    /// ex. wrap.aurora mapped to wrap_aurora.ft_bridged.shard.calimero.testnet
+    source_master_account: AccountId,
 }
 
 #[near_bindgen]

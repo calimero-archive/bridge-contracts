@@ -25,12 +25,12 @@ mod connector {
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/nft_connector_source.wasm",
+                "./target/wasm32-unknown-unknown/release/nft_connector.wasm",
             )
                 .unwrap();
             let connector_contract = worker.dev_deploy(&connector_wasm).await.unwrap();
             let non_fungible_token_wasm = std::fs::read(
-                "./tests/non_fungible_token.wasm",
+                "./tests/source_test_assets/non_fungible_token.wasm",
             )
                 .unwrap();
 
@@ -55,8 +55,6 @@ mod connector {
                 .call(&worker, "new")
                 .args_json(json!({
                 "prover_account": prover_contract.id().to_string(),
-                "source_master_account": "todo_remove_this_field",
-                "destination_master_account": "todo_remove_this_field"
             }))
                 .unwrap()
                 .transact()
@@ -156,7 +154,7 @@ mod connector {
                 .await
                 .unwrap();
 
-            let deploy_proof = &file_as_json::<FullOutcomeProof>("deploy_proof.json").unwrap();
+            let deploy_proof = &file_as_json::<FullOutcomeProof>("source_test_assets/deploy_proof.json").unwrap();
 
             prover
                 .call(&worker, "prove_outcome")
@@ -171,7 +169,7 @@ mod connector {
                 .unwrap();
 
             connector
-                .call(&worker, "register_nft_on_private")
+                .call(&worker, "register_on_other")
                 .args_json(json!({
                 "proof": deploy_proof,
                 "height": 9999, // not important for mock prover
@@ -252,7 +250,7 @@ mod connector {
             let register_execution_details = register_nft(&worker, &prover, &connector, &non_fungible_token).await;
             assert!(register_execution_details.is_success());
 
-            let burn_proof = &file_as_json::<FullOutcomeProof>("burn_proof.json").unwrap();
+            let burn_proof = &file_as_json::<FullOutcomeProof>("source_test_assets/burn_proof.json").unwrap();
             let unlock_execution_details = unlock_nft(&worker, &prover, &connector, &non_fungible_token, &burn_proof).await;
             assert!(unlock_execution_details.is_success());
 

@@ -1,4 +1,5 @@
 use admin_controlled::Mask;
+use connector_base::OtherNetworkAware;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::UnorderedSet;
 use near_sdk::serde_json;
@@ -30,6 +31,8 @@ pub struct CrossShardConnector {
     paused: Mask,
 }
 
+connector_base::impl_other_network_aware!(CrossShardConnector);
+
 #[near_bindgen]
 impl CrossShardConnector {
     /// Initializes the contract.
@@ -43,20 +46,6 @@ impl CrossShardConnector {
             locker_account: None,
             paused: Mask::default(),
         }
-    }
-
-    #[payable]
-    pub fn set_locker(&mut self, locker_account: AccountId) {
-        near_sdk::assert_self();
-        require!(self.locker_account.is_none());
-        let initial_storage = env::storage_usage() as u128;
-        self.locker_account = Some(locker_account);
-        let current_storage = env::storage_usage() as u128;
-        require!(
-            env::attached_deposit()
-                >= env::storage_byte_cost() * (current_storage - initial_storage),
-            "Not enough attached deposit to complete network connection"
-        );
     }
 
     /// Used when initiating call on other network
@@ -196,7 +185,7 @@ impl CrossShardConnector {
 
         let execution_result = match env::promise_result(0) {
             PromiseResult::Successful(x) => base64::encode(x),
-            _ => "FAILED".to_string(),
+            _ => "FAILED!".to_string(),
         };
 
         env::log_str(&format!(
@@ -271,7 +260,7 @@ impl CrossShardConnector {
             "Deposit too low"
         );
 
-        let args = if response == "FAILED" {
+        let args = if response == "FAILED!" {
             None
         } else {
             Some(base64::decode(response).unwrap())
@@ -284,25 +273,6 @@ impl CrossShardConnector {
             NO_DEPOSIT,
             CALL_GAS,
         ))
-    }
-
-    /// Record proof to make sure it is not re-used later for another transaction.
-    fn record_proof(&mut self, proof: &FullOutcomeProof) -> Balance {
-        near_sdk::assert_self();
-        let initial_storage = env::storage_usage();
-
-        let proof_key = proof.block_header_lite.hash();
-        require!(
-            !self.used_events.contains(&proof_key),
-            "Event cannot be reused."
-        );
-        self.used_events.insert(&proof_key);
-        let current_storage = env::storage_usage();
-        let required_deposit =
-            Balance::from(current_storage - initial_storage) * env::storage_byte_cost();
-
-        env::log_str(&format!("RecordProof:{}", hashes::encode_hex(&proof_key)));
-        required_deposit
     }
 }
 

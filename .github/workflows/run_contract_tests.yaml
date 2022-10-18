@@ -45,7 +45,7 @@ jobs:
           ./build.sh
           ./deploy.sh
           cd ../bridge_token_deployer
-          ./build.sh
+          ./build_ft.sh
           cd ../mock_prover
           ./build.sh
           cd ../ft_connector
@@ -57,9 +57,8 @@ jobs:
           cd contracts/nft_bridge_token
           ./build.sh
           ./deploy.sh
-          cd ../nft_connector_destination
-          ./build.sh
-          BRIDGE_TOKEN=../bridge_token.wasm cargo test
-          cd ../nft_connector_source
+          cd ../bridge_token_deployer
+          ./build_nft.sh
+          cd ../nft_connector
           ./build.sh
           cargo test -- --nocapture
