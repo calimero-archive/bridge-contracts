@@ -3,7 +3,7 @@ mod connector_permissions {
     mod test {
         use near_sdk::serde_json;
         use near_sdk::serde_json::json;
-        use near_units::{parse_gas};
+        use near_units::parse_gas;
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
         use connector_permissions::ConnectorType;

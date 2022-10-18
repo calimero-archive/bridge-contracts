@@ -51,3 +51,15 @@ jobs:
           cd ../ft_connector
           ./build.sh
           cargo test -- --nocapture
+
+      - name: Run nft_connector tests
+        run: |
+          cd contracts/nft_bridge_token
+          ./build.sh
+          ./deploy.sh
+          cd ../nft_connector_destination
+          ./build.sh
+          BRIDGE_TOKEN=../bridge_token.wasm cargo test
+          cd ../nft_connector_source
+          ./build.sh
+          cargo test -- --nocapture

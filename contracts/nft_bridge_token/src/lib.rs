@@ -10,6 +10,7 @@ use near_sdk::{
     assert_one_yocto, env, ext_contract, near_bindgen, AccountId, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
+use near_sdk::collections::{LookupMap, UnorderedSet};
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -113,6 +114,12 @@ impl BridgeToken {
             .burn(env::predecessor_account_id(), &token_id);
 
         self.token.owner_by_id.remove(&token_id);
+        // TODO: clear the tokens_per_owner map as well
+        // if let Some(tokens_per_owner) = &mut self.token.tokens_per_owner {
+        //     if let Some(owner_tokens) = &mut tokens_per_owner.get(&owner.as_ref().unwrap()) {
+        //         owner_tokens.remove(&token_id);
+        //     }
+        // }
         NftBurn {
             owner_id: &owner.unwrap(),
             token_ids: &[&token_id],
