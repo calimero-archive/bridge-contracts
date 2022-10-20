@@ -4,7 +4,7 @@ extern crate near_sdk;
 
 use admin_controlled::Mask;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
+use std::collections::VecDeque;
 use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
 use types::signature::Signature;
 use types::{Block, Epoch, Validator};
@@ -13,6 +13,12 @@ use utils::{hashes, Hash, Hashable};
 // Current assumptions is that private shard only run max 100 block producers
 const MAX_BLOCK_PRODUCERS: u32 = 100;
 const NUM_OF_EPOCHS: usize = 3;
+
+// when checking proof the last added block is always used as reference
+// this gives 7 additional blocks added (at least 7 seconds) to fetch proof
+// and use it to prove. 2 blocks are used for call it self which leaves (at least) 5
+// seconds to retrieve proof.
+const DEFAULT_BLOCKS_TO_KEEP: usize = 7;
 
 #[near_bindgen]
 #[derive(PanicOnDefault, BorshDeserialize, BorshSerialize)]
@@ -35,10 +41,12 @@ pub struct LightClient {
     // replaceDuration is in nanoseconds, because it is a difference between NEAR timestamps.
     replace_duration: u64,
     current_epoch_index: usize,
-    block_hashes: LookupMap<u64, Hash>,
-    block_merkle_roots: LookupMap<u64, Hash>,
+    block_hashes: VecDeque<(u64, Hash)>,
+    block_merkle_roots: VecDeque<(u64, Hash)>,
     // Mask determining all paused functions
     paused: Mask,
+    // number of latest added blocks client keeps
+    blocks_to_keep: usize,
 }
 
 const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
@@ -46,7 +54,12 @@ const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
 #[near_bindgen]
 impl LightClient {
     #[init]
-    pub fn new(lock_duration: u64, replace_duration: u64) -> Self {
+    pub fn new(lock_duration: u64, replace_duration: u64, max_blocks: Option<usize>) -> Self {
+        let blocks_to_keep = if let Some(blocks_to_keep) = max_blocks {
+            blocks_to_keep
+        } else {
+            DEFAULT_BLOCKS_TO_KEEP
+        };
         Self {
             epochs: Vec::new(),
             current_height: 0,
@@ -62,9 +75,10 @@ impl LightClient {
             lock_duration: lock_duration,
             replace_duration: replace_duration,
             current_epoch_index: 0,
-            block_hashes: LookupMap::new(b"h"),
-            block_merkle_roots: LookupMap::new(b"m"),
+            block_hashes: VecDeque::new(),
+            block_merkle_roots: VecDeque::new(),
             paused: Mask::default(),
+            blocks_to_keep,
         }
     }
 
@@ -82,8 +96,8 @@ impl LightClient {
         self.signature_set = 0;
         self.signatures = Vec::new();
         self.current_epoch_index = 0;
-        self.block_merkle_roots = LookupMap::new(b"m");
-        self.block_hashes = LookupMap::new(b"h");
+        self.block_merkle_roots = VecDeque::new();
+        self.block_hashes = VecDeque::new();
     }
 
     /// The first part of initialization -- setting the validators of the current epoch.
@@ -104,7 +118,7 @@ impl LightClient {
         for _ in 0..MAX_BLOCK_PRODUCERS {
             self.signatures.push(Default::default());
         }
-        LightClient::set_block_producers(initial_validators, &mut self.epochs[0]);
+        LightClient::set_block_producers(&initial_validators, &mut self.epochs[0]);
     }
 
     /// The second part of the initialization
@@ -123,13 +137,10 @@ impl LightClient {
         self.current_height = block.inner_lite.height;
         self.epochs[0].epoch_id = block.inner_lite.epoch_id;
         self.epochs[1].epoch_id = block.inner_lite.next_epoch_id;
-        self.block_hashes
-            .insert(&block.inner_lite.height, &block.hash());
-        self.block_merkle_roots.insert(
-            &block.inner_lite.height,
-            &block.inner_lite.block_merkle_root,
-        );
-        LightClient::set_block_producers(block.next_bps.unwrap(), &mut self.epochs[1]);
+        self.block_hashes.push_front((self.current_height, block.hash()));
+        self.block_merkle_roots.push_front((self.current_height, block.inner_lite.block_merkle_root));
+
+        LightClient::set_block_producers(&block.next_bps.unwrap(), &mut self.epochs[1]);
     }
 
     pub fn current_height(&self) -> u64 {
@@ -137,16 +148,20 @@ impl LightClient {
     }
 
     pub fn block_hashes(&self, height: u64) -> Option<Hash> {
-        if let Some(res) = &self.block_hashes.get(&height) {
-            return Some(*res);
-        } 
+        for (known_height, hash) in self.block_hashes.iter() {
+            if &height == known_height {
+                return Some(*hash);
+            }
+        }
         return None;
     }
 
     pub fn block_merkle_roots(&self, height: u64) -> Option<Hash> {
-        if let Some(res) = &self.block_merkle_roots.get(&height) {
-            return Some(*res);
-        } 
+        for (known_height, merkle_root) in self.block_merkle_roots.iter() {
+            if &height == known_height {
+                return Some(*merkle_root);
+            }
+        }
         return None;
     }
 
@@ -230,13 +245,19 @@ impl LightClient {
         if from_next_epoch {
             let mut next_epoch = &mut self.epochs[(self.current_epoch_index + 2) % NUM_OF_EPOCHS];
             next_epoch.epoch_id = block.inner_lite.next_epoch_id;
-            LightClient::set_block_producers(block.next_bps.unwrap(), next_epoch);
+            LightClient::set_block_producers(block.next_bps.as_ref().unwrap(), next_epoch);
         }
         self.last_submitter = env::predecessor_account_id();
 
-        self.block_hashes.insert(&self.current_height, &self.hash);
-        self.block_merkle_roots
-            .insert(&self.current_height, &self.merkle_root);
+
+        self.block_hashes.push_front((self.current_height, block.hash()));
+        self.block_merkle_roots.push_front((self.current_height, block.inner_lite.block_merkle_root));
+
+        while self.block_hashes.len() > self.blocks_to_keep {
+            self.block_hashes.pop_back();
+            self.block_merkle_roots.pop_back();
+        }
+
         if from_next_epoch {
             self.current_epoch_index = (self.current_epoch_index + 1) % NUM_OF_EPOCHS;
         }
@@ -269,7 +290,7 @@ impl LightClient {
             .unwrap();
     }
 
-    fn set_block_producers(block_producers: Vec<Validator>, epoch: &mut Epoch) {
+    fn set_block_producers(block_producers: &Vec<Validator>, epoch: &mut Epoch) {
         require!(
             (block_producers.len() as u32) <= MAX_BLOCK_PRODUCERS,
             "It is not expected having that many block producers for the provided block"
@@ -279,7 +300,7 @@ impl LightClient {
         epoch.stakes = Vec::new();
 
         let mut total_stake: u128 = 0;
-        for block_producer in &block_producers {
+        for block_producer in block_producers {
             epoch.keys.push(block_producer.public_key().clone());
             total_stake += *block_producer.stake();
             epoch.stakes.push(*block_producer.stake());
