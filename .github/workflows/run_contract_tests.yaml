@@ -62,3 +62,11 @@ jobs:
           cd ../nft_connector
           ./build.sh
           cargo test -- --nocapture
+
+      - name: Run xsc_connector tests
+        run: |
+          cd contracts/mock_prover
+          ./build.sh
+          cd ../xsc_connector
+          ./build.sh
+          cargo test -- --nocapture
