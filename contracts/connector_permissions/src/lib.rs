@@ -1,15 +1,7 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
-use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::collections::LookupSet;
-
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub enum ConnectorType {
-    FT = 0,
-    NFT = 1,
-    XSC = 2,
-}
+use types::ConnectorType;
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]

@@ -2,6 +2,7 @@ use admin_controlled::Mask;
 use connector_base::{
     DeployerAware, OtherNetworkAware, OtherNetworkTokenAware, TokenMint, TokenUnlock,
 };
+use types::ConnectorType;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap, UnorderedSet};
 use near_sdk::json_types::U128;
@@ -48,6 +49,9 @@ const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
 /// Gas to call prove_outcome on prover.
 const PROVE_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
+/// Gas to call can_bridge on permissions manager
+const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
+
 const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 const PAUSE_DEPOSIT: Mask = 1 << 1;
 
@@ -79,18 +83,48 @@ impl FungibleTokenConnector {
 
     /// Used when sending FT to other network
     /// `msg` is expected to contain valid other network id
-    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> U128 {
-        self.lock(sender_id, amount, msg)
+    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) {
+        let permission_promise = env::promise_create(
+            self.connector_permissions_account.clone(),
+            "can_bridge",
+            &serde_json::to_vec(&(&sender_id, ConnectorType::FT)).unwrap(),
+            NO_DEPOSIT,
+            PERMISSIONS_OUTCOME_GAS
+        );
+
+        env::promise_return(
+            env::promise_then(
+                permission_promise,
+                env::current_account_id(),
+                "lock",
+                &serde_json::to_vec(&(sender_id, env::predecessor_account_id(), amount, msg)).unwrap(),
+                NO_DEPOSIT,
+                PERMISSIONS_OUTCOME_GAS
+            )
+        );
     }
 
-    fn lock(&mut self, sender_id: AccountId, amount: U128, _msg: String) -> U128 {
-        env::log_str(&format!(
-            "CALIMERO_EVENT_LOCK:{}:{}:{}",
-            env::predecessor_account_id(),
-            sender_id,
-            amount.0
-        ));
-        U128(0)
+    pub fn lock(&mut self, sender_id: AccountId, ft_contract_id: AccountId, amount: U128, _msg: String) {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let verification_success = match env::promise_result(0) {
+            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
+            _ => false,
+        };
+
+        if verification_success {
+            env::log_str(&format!(
+                "CALIMERO_EVENT_LOCK:{}:{}:{}",
+                ft_contract_id,
+                sender_id,
+                amount.0
+            ));
+
+            env::value_return(&serde_json::to_vec(&U128(0).0.to_string()).unwrap());
+        } else {
+            env::value_return(&serde_json::to_vec(&amount.0.to_string()).unwrap());
+        }
     }
 
     fn transform_transferable(amount: U128) -> u128 {

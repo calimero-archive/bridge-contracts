@@ -23,11 +23,15 @@ mod connector {
             )
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
+            let connector_permissions_wasm = std::fs::read(
+                "../connector_permissions/target/wasm32-unknown-unknown/release/connector_permissions.wasm",
+            )
+                .unwrap();
+            let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
                 "./target/wasm32-unknown-unknown/release/nft_connector.wasm",
             )
                 .unwrap();
-
 
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_connector");
             let tla = workspaces::AccountId::try_from("connector.test.near".to_string()).unwrap();
@@ -67,11 +71,24 @@ mod connector {
                 .await
                 .unwrap();
 
+            connector_permissions_contract
+                .call(&worker, "new")
+                .args_json(json!({
+                    "ft_connector_account": "ft_connector_not_relevant_for_this_test",
+                    "nft_connector_account": "nft_connector_not_relevant_for_this_test",
+                    "xsc_connector_account": connector_permissions_contract.id().to_string(),
+                }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
             connector_contract
                 .call(&worker, "new")
                 .args_json(json!({
-                "prover_account": prover_contract.id().to_string(),
-            }))
+                    "prover_account": prover_contract.id().to_string(),
+                    "connector_permissions_account": connector_permissions_contract.id().to_string(),
+                }))
                 .unwrap()
                 .transact()
                 .await
@@ -193,7 +210,6 @@ mod connector {
             let (worker, prover, connector, proof) = mint_case1().await;
             reuse_proof(worker, prover, connector, proof, 99152413).await
         }
-
 
         #[tokio::test]
         async fn test_withdraw() {

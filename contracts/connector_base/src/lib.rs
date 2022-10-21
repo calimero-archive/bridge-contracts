@@ -16,7 +16,7 @@ pub trait OtherNetworkAware {
 }
 
 pub trait OtherNetworkTokenAware {
-    fn new(prover_account: AccountId) -> Self;
+    fn new(prover_account: AccountId, connector_permissions_account: AccountId) -> Self;
     fn view_mapping(&self, source_account: AccountId) -> Option<AccountId>;
     fn map_contracts(&mut self, source_contract: AccountId, destination_contract: AccountId);
     fn register_on_other(&mut self, proof: FullOutcomeProof, height: u64);

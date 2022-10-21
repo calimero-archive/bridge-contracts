@@ -7,15 +7,15 @@ mod connector {
         use test_utils::file_as_json;
         use utils::hashes::{decode_hex};
         use utils::Hash;
-        use types::{FullOutcomeProof};
+        use types::{FullOutcomeProof, ConnectorType};
         use workspaces::prelude::*;
-        use workspaces::{network::Sandbox, Contract, Worker};
+        use workspaces::{network::Sandbox, Contract, Worker, Account};
         use workspaces::result::CallExecutionDetails;
 
         const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1661337044068-74633164378532";
         const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922485";
 
-        async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract) {
+        async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
             // deploy contracts
             let prover_wasm = std::fs::read(
@@ -23,6 +23,11 @@ mod connector {
             )
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
+            let connector_permissions_wasm = std::fs::read(
+                "../connector_permissions/target/wasm32-unknown-unknown/release/connector_permissions.wasm",
+            )
+                .unwrap();
+            let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
                 "./target/wasm32-unknown-unknown/release/ft_connector.wasm",
             )
@@ -50,12 +55,23 @@ mod connector {
                 .await
                 .unwrap();
 
+            connector_permissions_contract
+                .call(&worker, "new")
+                .args_json(json!({
+                    "ft_connector_account": connector_contract.id().to_string(),
+                    "nft_connector_account": "nft_connector_not_relevant_for_this_test",
+                    "xsc_connector_account": "xsc_connector_not_relevant_for_this_test",
+                }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
             connector_contract
                 .call(&worker, "new")
                 .args_json(json!({
                 "prover_account": prover_contract.id().to_string(),
-                "source_master_account": "todo_remove_this_field",
-                "destination_master_account": "todo_remove_this_field"
+                "connector_permissions_account": connector_permissions_contract.id().to_string(),
             }))
                 .unwrap()
                 .transact()
@@ -90,10 +106,10 @@ mod connector {
                 .await
                 .unwrap();
 
-            (worker, prover_contract, connector_contract, fungible_token_contract)
+            (worker, prover_contract, connector_contract, fungible_token_contract, connector_permissions_contract)
         }
 
-        async fn lock_ft(worker: &Worker<Sandbox>, _prover: &Contract, connector: &Contract, fungible_token: &Contract) -> CallExecutionDetails {
+        async fn create_and_fund_alice_account(worker: &Worker<Sandbox>, _prover: &Contract, connector: &Contract, fungible_token: &Contract) -> Account {
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_2");
             let tla = workspaces::AccountId::try_from(ALICE_ACCOUNT_ID.to_string()).unwrap();
             let alice_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
@@ -149,7 +165,11 @@ mod connector {
                 .json().unwrap();
             assert!(balance_before_lock == "88000");
 
-            alice_account.call(&worker, fungible_token.id(), "ft_transfer_call")
+            alice_account
+        }
+
+        async fn lock_ft(worker: &Worker<Sandbox>, _prover: &Contract, connector: &Contract, fungible_token: &Contract, account: &Account) -> CallExecutionDetails {
+            account.call(&worker, fungible_token.id(), "ft_transfer_call")
                 .args_json(json!({
                 "receiver_id": connector.id(),
                     "amount": "12345",
@@ -245,7 +265,8 @@ mod connector {
         }
 
         async fn lock_and_unlock_should_all_pass(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, fungible_token: &Contract) -> FullOutcomeProof {
-            let lock_execution_details = lock_ft(&worker, &prover, &connector, &fungible_token).await;
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &fungible_token).await;
+            let lock_execution_details = lock_ft(&worker, &prover, &connector, &fungible_token, &alice_account).await;
             assert!(lock_execution_details.is_success());
 
             let balance_after_lock: String = worker.view(
@@ -280,8 +301,9 @@ mod connector {
 
         #[tokio::test]
         async fn test_lock_works() {
-            let (worker, prover, connector, fungible_token) = init().await;
-            let lock_execution_details = lock_ft(&worker, &prover, &connector, &fungible_token).await;
+            let (worker, prover, connector, fungible_token, _connector_permissions) = init().await;
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &fungible_token).await;
+            let lock_execution_details = lock_ft(&worker, &prover, &connector, &fungible_token, &alice_account).await;
 
             assert!(lock_execution_details.logs().len() == 2);
 
@@ -304,18 +326,90 @@ mod connector {
 
         #[tokio::test]
         async fn test_unlock() {
-            let (worker, prover, connector, fungible_token) = init().await;
+            let (worker, prover, connector, fungible_token, _connector_permissions) = init().await;
             lock_and_unlock_should_all_pass(&worker, &prover, &connector, &fungible_token).await;
         }
 
         #[tokio::test]
         #[should_panic]
         async fn test_proof_reuse_panics() {
-            let (worker, prover, connector, fungible_token) = init().await;
+            let (worker, prover, connector, fungible_token, _connector_permissions) = init().await;
             let used_proof = lock_and_unlock_should_all_pass(&worker, &prover, &connector, &fungible_token).await;
 
             // should panic since reusing proof
             unlock_ft(&worker, &prover, &connector, &fungible_token, &used_proof).await;
+        }
+
+        #[tokio::test]
+        async fn test_lock_for_denied_account() {
+            let (worker, prover, connector, fungible_token, connector_permissions) = init().await;
+
+            let deny_result = connector.as_account()
+                .call(&worker, connector_permissions.id(), "deny_bridge")
+                .args_json(json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::FT,
+                 }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+            assert!(deny_result.is_success());
+
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &fungible_token).await;
+
+            let lock_result = lock_ft(&worker, &prover, &connector, &fungible_token, &alice_account).await;
+            assert!(lock_result.logs().len() == 2);
+
+            // first event shows that alice sent funds to ft_connector
+            let event_json: serde_json::Value = serde_json::from_str(lock_result.logs()[0].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(event_json["event"] == "ft_transfer");
+            assert!(event_json["standard"] == "nep141");
+            assert!(event_json["data"][0]["amount"] == "12345");
+            assert!(event_json["data"][0]["new_owner_id"] == connector.id().to_string());
+            assert!(event_json["data"][0]["old_owner_id"] == ALICE_ACCOUNT_ID);
+
+            // second event shows that alice got refund since alice's account is denied
+            let refund_event_json: serde_json::Value = serde_json::from_str(lock_result.logs()[1].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(refund_event_json["event"] == "ft_transfer");
+            assert!(refund_event_json["standard"] == "nep141");
+            assert!(refund_event_json["data"][0]["amount"] == "12345");
+            assert!(refund_event_json["data"][0]["new_owner_id"] == ALICE_ACCOUNT_ID);
+            assert!(refund_event_json["data"][0]["old_owner_id"] == connector.id().to_string());
+            assert!(refund_event_json["data"][0]["memo"] == "refund");
+
+            // Allow Alice to use the ft_connector again
+            let allow_result = connector.as_account()
+                .call(&worker, connector_permissions.id(), "allow_bridge")
+                .args_json(json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::FT,
+                 }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+            assert!(allow_result.is_success());
+
+            // Try locking ft-s again
+            let second_lock_result = lock_ft(&worker, &prover, &connector, &fungible_token, &alice_account).await;
+
+            assert!(second_lock_result.logs().len() == 2);
+            // this event is emitted from the ft contract
+            let transfer_event_json: serde_json::Value = serde_json::from_str(second_lock_result.logs()[0].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(transfer_event_json["event"] == "ft_transfer");
+            assert!(transfer_event_json["standard"] == "nep141");
+            assert!(transfer_event_json["data"][0]["amount"] == "12345");
+            assert!(transfer_event_json["data"][0]["new_owner_id"] == connector.id().to_string());
+            assert!(transfer_event_json["data"][0]["old_owner_id"] == ALICE_ACCOUNT_ID);
+
+            // verify lock event passed, this event is emitted from the ft_connector contract
+            let parts: Vec<&str> = second_lock_result.logs()[1].split(":").collect();
+            assert!(parts.len() == 4);
+            assert!(parts[0] == "CALIMERO_EVENT_LOCK");
+            assert!(parts[1] == fungible_token.id().to_string());
+            assert!(parts[2] == ALICE_ACCOUNT_ID);
+            assert!(parts[3] == "12345");
         }
     }
 }

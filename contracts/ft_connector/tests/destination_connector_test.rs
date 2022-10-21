@@ -22,6 +22,11 @@ mod connector {
             )
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
+            let connector_permissions_wasm = std::fs::read(
+                "../connector_permissions/target/wasm32-unknown-unknown/release/connector_permissions.wasm",
+            )
+                .unwrap();
+            let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
                 "./target/wasm32-unknown-unknown/release/ft_connector.wasm",
             )
@@ -45,10 +50,23 @@ mod connector {
                 .await
                 .unwrap();
 
+            connector_permissions_contract
+                .call(&worker, "new")
+                .args_json(json!({
+                    "ft_connector_account": connector_contract.id().to_string(),
+                    "nft_connector_account": "nft_connector_not_relevant_for_this_test",
+                    "xsc_connector_account": "xsc_connector_not_relevant_for_this_test",
+                }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
             connector_contract
                 .call(&worker, "new")
                 .args_json(json!({
                     "prover_account": prover_contract.id().to_string(),
+                    "connector_permissions_account": connector_permissions_contract.id().to_string(),
                 }))
                 .unwrap()
                 .transact()

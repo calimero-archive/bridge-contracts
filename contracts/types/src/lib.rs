@@ -474,3 +474,11 @@ pub struct TransactionStatus {
     pub transaction: Transaction,
     pub transaction_outcome: ExecutionOutcomeWithIdAndProof,
 }
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(crate = "near_sdk::serde")]
+pub enum ConnectorType {
+    FT = 0,
+    NFT = 1,
+    XSC = 2,
+}

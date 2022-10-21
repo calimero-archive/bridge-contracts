@@ -18,11 +18,16 @@ const CALL_GAS: Gas = Gas(20_000_000_000_000);
 /// Gas to call verify_log_entry on prover.
 const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 
+/// Gas to call can_bridge on permissions manager
+const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct CrossShardConnector {
     /// The account of the prover that we can use to prove
     pub prover_account: AccountId,
+    /// The contract account which can deny certain accounts from initiating a bridge action
+    pub connector_permissions_account: AccountId,
     /// The account of the locker on other network that is used to burn NFT
     pub locker_account: Option<AccountId>,
     /// Hashes of the events that were already used.
@@ -38,10 +43,11 @@ impl CrossShardConnector {
     /// Initializes the contract.
     /// `prover_account`: NEAR account of the Near Prover contract;
     #[init]
-    pub fn new(prover_account: AccountId) -> Self {
+    pub fn new(prover_account: AccountId, connector_permissions_account: AccountId) -> Self {
         require!(!env::state_exists(), "Already initialized");
         Self {
             prover_account,
+            connector_permissions_account,
             used_events: UnorderedSet::new(b"u".to_vec()),
             locker_account: None,
             paused: Mask::default(),
@@ -59,16 +65,68 @@ impl CrossShardConnector {
         destination_deposit: Balance,
         source_callback_method: String,
     ) {
-        env::log_str(&format!(
-            "CALIMERO_EVENT_CROSS_CALL:{}:{}:{}:{}:{}:{}:{}",
-            destination_contract_id,
-            destination_contract_method,
-            base64::encode(destination_contract_args),
-            destination_gas.0,
-            destination_deposit,
-            env::predecessor_account_id(),
-            source_callback_method,
-        ));
+        let permission_promise = env::promise_create(
+            self.connector_permissions_account.clone(),
+            "can_make_cross_shard_call_for_contract",
+            &serde_json::to_vec(&(env::predecessor_account_id(), &destination_contract_id)).unwrap(),
+            NO_DEPOSIT,
+            PERMISSIONS_OUTCOME_GAS
+        );
+
+        env::promise_return(
+            env::promise_then(
+                permission_promise,
+                env::current_account_id(),
+                "cross_call_resolve",
+                &serde_json::to_vec(&(
+                    destination_contract_id,
+                    destination_contract_method,
+                    destination_contract_args,
+                    destination_gas,
+                    destination_deposit,
+                    source_callback_method,
+                    env::predecessor_account_id().to_string(),
+                )).unwrap(),
+                NO_DEPOSIT,
+                PERMISSIONS_OUTCOME_GAS
+            )
+        );
+    }
+
+    pub fn cross_call_resolve(
+        &mut self,
+        destination_contract_id: String,
+        destination_contract_method: String,
+        destination_contract_args: String,
+        destination_gas: Gas,
+        destination_deposit: Balance,
+        source_callback_method: String,
+        cross_call_initiator_account_id: String,
+    ) -> bool {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let verification_success = match env::promise_result(0) {
+            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
+            _ => false,
+        };
+
+        if verification_success {
+            env::log_str(&format!(
+                "CALIMERO_EVENT_CROSS_CALL:{}:{}:{}:{}:{}:{}:{}",
+                destination_contract_id,
+                destination_contract_method,
+                base64::encode(destination_contract_args),
+                destination_gas.0,
+                destination_deposit,
+                cross_call_initiator_account_id,
+                source_callback_method,
+            ));
+            true
+        } else {
+            false
+        }
+
     }
 
     #[payable]

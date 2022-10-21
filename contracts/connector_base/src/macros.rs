@@ -83,6 +83,8 @@ macro_rules! impl_other_network_token_aware {
         pub struct $contract {
             /// The account of the prover that we can use to prove
             prover_account: AccountId,
+            /// The contract account which can deny certain accounts from initiating a bridge action
+            connector_permissions_account: AccountId,
             /// The account of the locker on other network that is used to lock FT
             locker_account: Option<AccountId>,
             /// The account of the deployer for bridge token
@@ -104,10 +106,11 @@ macro_rules! impl_other_network_token_aware {
             /// Initializes the contract.
             /// `prover_account`: NEAR account of the Near Prover contract;
             #[init]
-            fn new(prover_account: AccountId) -> Self {
+            fn new(prover_account: AccountId, connector_permissions_account: AccountId) -> Self {
                 require!(!env::state_exists(), "Already initialized");
                 Self {
                     prover_account,
+                    connector_permissions_account,
                     used_events: UnorderedSet::new(b"u".to_vec()),
                     contracts_mapping: UnorderedMap::new(b"c".to_vec()),
                     all_contracts: UnorderedSet::new(b"a".to_vec()),

@@ -2,6 +2,7 @@ use admin_controlled::Mask;
 use connector_base::{
     DeployerAware, OtherNetworkAware, OtherNetworkTokenAware, TokenMint, TokenUnlock,
 };
+use types::ConnectorType;
 use near_contract_standards::non_fungible_token::metadata::TokenMetadata;
 use near_contract_standards::non_fungible_token::{Token, TokenId};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
@@ -45,6 +46,9 @@ const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 
 /// Gas to call finish unlock method.
 const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
+
+/// Gas to call can_bridge on permissions manager
+const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
 const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 const PAUSE_DEPOSIT: Mask = 1 << 1;
@@ -102,11 +106,11 @@ impl NonFungibleTokenConnector {
     pub fn lock(
         &mut self,
         token_account: String,
-        _sender_id: String,
+        sender_id: String,
         previous_owner_id: String,
         token_id: String,
-        _msg: String,
-    ) -> bool {
+        msg: String,
+    ) {
         near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
@@ -135,14 +139,61 @@ impl NonFungibleTokenConnector {
             })
         };
 
-        env::log_str(&format!(
-            "CALIMERO_EVENT_LOCK_NFT:{}:{}:{}:{}",
-            token_account,
-            previous_owner_id,
-            base64::encode(token_id),
-            base64::encode(serde_json::to_string(&metadata.unwrap()).unwrap()),
+        let permission_promise = env::promise_create(
+            self.connector_permissions_account.clone(),
+            "can_bridge",
+            &serde_json::to_vec(&(&sender_id, ConnectorType::NFT)).unwrap(),
+            NO_DEPOSIT,
+            PERMISSIONS_OUTCOME_GAS
+        );
+
+        env::promise_return(env::promise_then(
+            permission_promise,
+            env::current_account_id(),
+            "lock_with_metadata",
+            &serde_json::to_vec(&(
+                token_account,
+                sender_id,
+                previous_owner_id,
+                token_id,
+                msg,
+                metadata
+            ))
+                .unwrap(),
+            NO_DEPOSIT,
+            env::prepaid_gas() / 3,
         ));
-        false
+    }
+
+    pub fn lock_with_metadata(
+        &mut self,
+        token_account: String,
+        _sender_id: String,
+        previous_owner_id: String,
+        token_id: String,
+        _msg: String,
+        metadata: Option<TokenMetadata>
+    ) {
+        near_sdk::assert_self();
+        require!(env::promise_results_count() == 1);
+
+        let can_bridge_promise_result = match env::promise_result(0) {
+            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
+            _ => false,
+        };
+
+        if can_bridge_promise_result {
+            env::log_str(&format!(
+                "CALIMERO_EVENT_LOCK_NFT:{}:{}:{}:{}",
+                token_account,
+                previous_owner_id,
+                base64::encode(token_id),
+                base64::encode(serde_json::to_string(&metadata.unwrap()).unwrap()),
+            ));
+            env::value_return(&serde_json::to_vec(&false).unwrap());
+        } else {
+            env::value_return(&serde_json::to_vec(&true).unwrap());
+        }
     }
 
     fn transform_transferable(token_id: String) -> String {

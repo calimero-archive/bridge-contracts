@@ -48,6 +48,8 @@ jobs:
           ./build_ft.sh
           cd ../mock_prover
           ./build.sh
+          cd ../connector_permissions
+          ./build.sh
           cd ../ft_connector
           ./build.sh
           cargo test -- --nocapture
@@ -59,6 +61,10 @@ jobs:
           ./deploy.sh
           cd ../bridge_token_deployer
           ./build_nft.sh
+          cd ../mock_prover
+          ./build.sh
+          cd ../connector_permissions
+          ./build.sh
           cd ../nft_connector
           ./build.sh
           cargo test -- --nocapture
@@ -66,6 +72,8 @@ jobs:
       - name: Run xsc_connector tests
         run: |
           cd contracts/mock_prover
+          ./build.sh
+          cd ../connector_permissions
           ./build.sh
           cd ../xsc_connector
           ./build.sh

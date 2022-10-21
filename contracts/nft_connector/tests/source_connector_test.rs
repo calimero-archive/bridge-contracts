@@ -8,15 +8,15 @@ mod connector {
         use test_utils::file_as_json;
         use utils::hashes::{decode_hex};
         use utils::Hash;
-        use types::{FullOutcomeProof};
+        use types::{FullOutcomeProof, ConnectorType};
         use workspaces::prelude::*;
-        use workspaces::{network::Sandbox, Contract, Worker};
+        use workspaces::{network::Sandbox, Contract, Worker, Account};
         use workspaces::result::CallExecutionDetails;
 
         const NFT_CONTRACT_ACCOUNT_ID: &str = "dev-1666030964074-54624403721325";
         const ALICE_ACCOUNT_ID: &str = "dev-1658913032484-17227415983110";
 
-        async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract) {
+        async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
             // deploy contracts
             let prover_wasm = std::fs::read(
@@ -24,6 +24,11 @@ mod connector {
             )
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
+            let connector_permissions_wasm = std::fs::read(
+                "../connector_permissions/target/wasm32-unknown-unknown/release/connector_permissions.wasm",
+            )
+                .unwrap();
+            let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
                 "./target/wasm32-unknown-unknown/release/nft_connector.wasm",
             )
@@ -51,11 +56,24 @@ mod connector {
                 .await
                 .unwrap();
 
+            connector_permissions_contract
+                .call(&worker, "new")
+                .args_json(json!({
+                    "ft_connector_account": "ft_connector_not_relevant_for_this_test",
+                    "nft_connector_account": connector_contract.id().to_string(),
+                    "xsc_connector_account": "xsc_connector_not_relevant_for_this_test",
+                }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
             connector_contract
                 .call(&worker, "new")
                 .args_json(json!({
-                "prover_account": prover_contract.id().to_string(),
-            }))
+                    "prover_account": prover_contract.id().to_string(),
+                    "connector_permissions_account": connector_permissions_contract.id().to_string(),
+                }))
                 .unwrap()
                 .transact()
                 .await
@@ -82,10 +100,10 @@ mod connector {
                 .await
                 .unwrap();
 
-            (worker, prover_contract, connector_contract, non_fungible_token_contract)
+            (worker, prover_contract, connector_contract, non_fungible_token_contract, connector_permissions_contract)
         }
 
-        async fn lock_nft(worker: &Worker<Sandbox>, _prover: &Contract, connector: &Contract, non_fungible_token: &Contract) -> CallExecutionDetails {
+        async fn create_and_fund_alice_account(worker: &Worker<Sandbox>, _prover: &Contract, connector: &Contract, non_fungible_token: &Contract) -> Account {
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_2");
             let tla = workspaces::AccountId::try_from(ALICE_ACCOUNT_ID.to_string()).unwrap();
             let alice_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
@@ -127,7 +145,11 @@ mod connector {
             assert!(owner_before_lock[0]["token_id"] == "0");
             assert!(owner_before_lock[0]["metadata"]["title"] == "Luka Modric");
 
-            alice_account.call(&worker, non_fungible_token.id(), "nft_transfer_call")
+            alice_account
+        }
+
+        async fn lock_nft(worker: &Worker<Sandbox>, _prover: &Contract, connector: &Contract, non_fungible_token: &Contract, account: &Account) -> CallExecutionDetails {
+            account.call(&worker, non_fungible_token.id(), "nft_transfer_call")
                 .args_json(json!({
                     "receiver_id": connector.id(),
                     "token_id": "0",
@@ -142,7 +164,7 @@ mod connector {
         }
 
         // checks for deploy nft proof and maps the nft contracts on source connector
-        async fn register_nft(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, _fungible_token: &Contract) -> CallExecutionDetails {
+        async fn register_nft(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, _non_fungible_token: &Contract) -> CallExecutionDetails {
             let expected_block_merkle_root: Hash = decode_hex("9d5f239abca26174d0a3c0c4975bf3bab65b1c7bf94539fa550c39f88e2dfdff").try_into().unwrap();
             prover
                 .call(&worker, "add_approved_hash")
@@ -223,7 +245,8 @@ mod connector {
         }
 
         async fn lock_and_unlock_should_all_pass(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, non_fungible_token: &Contract) -> FullOutcomeProof {
-            let lock_execution_details = lock_nft(&worker, &prover, &connector, &non_fungible_token).await;
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &non_fungible_token).await;
+            let lock_execution_details = lock_nft(&worker, &prover, &connector, &non_fungible_token, &alice_account).await;
             assert!(lock_execution_details.is_success());
 
             // On source side nft is never burnt, the supply should stay the same
@@ -245,6 +268,7 @@ mod connector {
                     })).unwrap())
                 .await.unwrap()
                 .json().unwrap();
+            println!("{}", owner_after_lock.to_string());
             assert!(owner_after_lock.to_string() == "[]");
 
             let register_execution_details = register_nft(&worker, &prover, &connector, &non_fungible_token).await;
@@ -280,8 +304,9 @@ mod connector {
 
         #[tokio::test]
         async fn test_lock_works() {
-            let (worker, prover, connector, non_fungible_token) = init().await;
-            let lock_execution_details = lock_nft(&worker, &prover, &connector, &non_fungible_token).await;
+            let (worker, prover, connector, non_fungible_token, _connector_permissions) = init().await;
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &non_fungible_token).await;
+            let lock_execution_details = lock_nft(&worker, &prover, &connector, &non_fungible_token, &alice_account).await;
 
             assert!(lock_execution_details.logs().len() == 2);
 
@@ -305,18 +330,90 @@ mod connector {
 
         #[tokio::test]
         async fn test_unlock() {
-            let (worker, prover, connector, non_fungible_token) = init().await;
+            let (worker, prover, connector, non_fungible_token, _connector_permissions) = init().await;
             lock_and_unlock_should_all_pass(&worker, &prover, &connector, &non_fungible_token).await;
         }
 
         #[tokio::test]
         #[should_panic]
         async fn test_proof_reuse_panics() {
-            let (worker, prover, connector, non_fungible_token) = init().await;
+            let (worker, prover, connector, non_fungible_token, _connector_permissions) = init().await;
             let used_proof = lock_and_unlock_should_all_pass(&worker, &prover, &connector, &non_fungible_token).await;
 
             // should panic since reusing proof
             unlock_nft(&worker, &prover, &connector, &non_fungible_token, &used_proof).await;
+        }
+
+        #[tokio::test]
+        async fn test_lock_for_denied_account() {
+            let (worker, prover, connector, non_fungible_token, connector_permissions) = init().await;
+
+            let deny_result = connector.as_account()
+                .call(&worker, connector_permissions.id(), "deny_bridge")
+                .args_json(json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::NFT,
+                 }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+            assert!(deny_result.is_success());
+
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &non_fungible_token).await;
+
+            let lock_result = lock_nft(&worker, &prover, &connector, &non_fungible_token, &alice_account).await;
+            assert!(lock_result.logs().len() == 2);
+
+            // first event shows that alice sent funds to nft_connector
+            let event_json: serde_json::Value = serde_json::from_str(lock_result.logs()[0].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(event_json["event"] == "nft_transfer");
+            assert!(event_json["standard"] == "nep171");
+            assert!(event_json["data"][0]["token_ids"][0] == "0");
+            assert!(event_json["data"][0]["new_owner_id"] == connector.id().to_string());
+            assert!(event_json["data"][0]["old_owner_id"] == ALICE_ACCOUNT_ID);
+
+            // second event shows that alice got refund since alice's account is denied
+            let refund_event_json: serde_json::Value = serde_json::from_str(lock_result.logs()[1].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(refund_event_json["event"] == "nft_transfer");
+            assert!(refund_event_json["standard"] == "nep171");
+            assert!(refund_event_json["data"][0]["token_ids"][0] == "0");
+            assert!(refund_event_json["data"][0]["new_owner_id"] == ALICE_ACCOUNT_ID);
+            assert!(refund_event_json["data"][0]["old_owner_id"] == connector.id().to_string());
+
+            // Allow Alice to use the nft_connector again
+            let allow_result = connector.as_account()
+                .call(&worker, connector_permissions.id(), "allow_bridge")
+                .args_json(json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::NFT,
+                 }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+            assert!(allow_result.is_success());
+
+            // Try locking nft again
+            let second_lock_result = lock_nft(&worker, &prover, &connector, &non_fungible_token, &alice_account).await;
+
+            assert!(second_lock_result.logs().len() == 2);
+            // verify lock event passed, owner of the NFT is the nft connector now
+            let transfer_event_json: serde_json::Value = serde_json::from_str(second_lock_result.logs()[0].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(transfer_event_json["event"] == "nft_transfer");
+            assert!(transfer_event_json["standard"] == "nep171");
+            assert!(transfer_event_json["data"][0]["token_ids"][0] == "0");
+            assert!(transfer_event_json["data"][0]["new_owner_id"] == connector.id().to_string());
+            assert!(transfer_event_json["data"][0]["old_owner_id"] == ALICE_ACCOUNT_ID);
+
+            // verify CALIMERO_EVENT_LOCK_NFT event was emitted
+            let parts: Vec<&str> = second_lock_result.logs()[1].split(":").collect();
+            assert!(parts[0] == "CALIMERO_EVENT_LOCK_NFT");
+            assert!(parts[1] == non_fungible_token.id().to_string());
+            assert!(parts[2] == ALICE_ACCOUNT_ID);
+            assert!(parts[3] == base64::encode("0"));
+            assert!(parts[4] == "eyJ0aXRsZSI6Ikx1a2EgTW9kcmljIiwiZGVzY3JpcHRpb24iOiJCZXN0IGZvb3RiYWwgcGxheWVyIGluIHRoZSB3b3JsZCIsIm1lZGlhIjoiaHR0cHM6Ly9zdGF0aWMwMS5ueXQuY29tL2ltYWdlcy8yMDE4LzEyLzA0L3Nwb3J0cy8wNFNPQ0NFUi13ZWIvbWVybGluXzE0NDE0ODM5OF9mMzgxNmVmNy02MDQ5LTQxNmMtOTEwZS04MWMzZDY2NTdkZTctc3VwZXJKdW1iby5qcGciLCJtZWRpYV9oYXNoIjpudWxsLCJjb3BpZXMiOjEsImlzc3VlZF9hdCI6bnVsbCwiZXhwaXJlc19hdCI6bnVsbCwic3RhcnRzX2F0IjpudWxsLCJ1cGRhdGVkX2F0IjpudWxsLCJleHRyYSI6bnVsbCwicmVmZXJlbmNlIjpudWxsLCJyZWZlcmVuY2VfaGFzaCI6bnVsbH0=");
+
         }
     }
 }

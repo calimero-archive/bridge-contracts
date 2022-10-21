@@ -10,6 +10,7 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 admin_controlled = { path = "../admin_controlled" }
 connector_base = { path = "../connector_base" }
+connector_permissions = { path = "../connector_permissions" }
 utils = { path = "../utils" }
 types = { path = "../types" }
 near-sdk = "4.0.0"

@@ -6,7 +6,7 @@ mod connector_permissions {
         use near_units::parse_gas;
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
-        use connector_permissions::ConnectorType;
+        use types::ConnectorType;
 
         const FT_CONNECTOR_ACCOUNT_ID: &str =  "dev-1111111111111-11111111111111";
         const NFT_CONNECTOR_ACCOUNT_ID: &str = "dev-2222222222222-22222222222222";
