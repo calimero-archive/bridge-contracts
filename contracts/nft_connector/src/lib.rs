@@ -2,16 +2,15 @@ use admin_controlled::Mask;
 use connector_base::{
     DeployerAware, OtherNetworkAware, OtherNetworkTokenAware, TokenMint, TokenUnlock,
 };
-use types::ConnectorType;
 use near_contract_standards::non_fungible_token::metadata::TokenMetadata;
 use near_contract_standards::non_fungible_token::{Token, TokenId};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{UnorderedMap, UnorderedSet};
+use near_sdk::collections::{LookupMap, LookupSet};
 use near_sdk::serde_json;
 use near_sdk::{
     env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
-use types::FullOutcomeProof;
+use types::{ConnectorType, FullOutcomeProof};
 use utils::{hashes, Hash, Hashable};
 
 use near_sdk::PublicKey;
@@ -144,7 +143,7 @@ impl NonFungibleTokenConnector {
             "can_bridge",
             &serde_json::to_vec(&(&sender_id, ConnectorType::NFT)).unwrap(),
             NO_DEPOSIT,
-            PERMISSIONS_OUTCOME_GAS
+            PERMISSIONS_OUTCOME_GAS,
         );
 
         env::promise_return(env::promise_then(
@@ -157,9 +156,9 @@ impl NonFungibleTokenConnector {
                 previous_owner_id,
                 token_id,
                 msg,
-                metadata
+                metadata,
             ))
-                .unwrap(),
+            .unwrap(),
             NO_DEPOSIT,
             env::prepaid_gas() / 3,
         ));
@@ -172,7 +171,7 @@ impl NonFungibleTokenConnector {
         previous_owner_id: String,
         token_id: String,
         _msg: String,
-        metadata: Option<TokenMetadata>
+        metadata: Option<TokenMetadata>,
     ) {
         near_sdk::assert_self();
         require!(env::promise_results_count() == 1);

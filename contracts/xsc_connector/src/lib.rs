@@ -1,7 +1,7 @@
 use admin_controlled::Mask;
 use connector_base::OtherNetworkAware;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::UnorderedSet;
+use near_sdk::collections::LookupSet;
 use near_sdk::serde_json;
 use near_sdk::{
     env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
@@ -31,9 +31,12 @@ pub struct CrossShardConnector {
     /// The account of the locker on other network that is used to burn NFT
     pub locker_account: Option<AccountId>,
     /// Hashes of the events that were already used.
-    pub used_events: UnorderedSet<Hash>,
+    pub used_events: LookupSet<Hash>,
     /// Mask determining all paused functions
     paused: Mask,
+    /// duration in nanoseconds for which proof is considered valid
+    /// not used if not provided
+    proof_validity_ns: Option<u64>,
 }
 
 connector_base::impl_other_network_aware!(CrossShardConnector);
@@ -43,14 +46,19 @@ impl CrossShardConnector {
     /// Initializes the contract.
     /// `prover_account`: NEAR account of the Near Prover contract;
     #[init]
-    pub fn new(prover_account: AccountId, connector_permissions_account: AccountId) -> Self {
+    pub fn new(
+        prover_account: AccountId,
+        connector_permissions_account: AccountId,
+        proof_validity_ns: Option<u64>,
+    ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         Self {
             prover_account,
             connector_permissions_account,
-            used_events: UnorderedSet::new(b"u".to_vec()),
+            used_events: LookupSet::new(b"u".to_vec()),
             locker_account: None,
             paused: Mask::default(),
+            proof_validity_ns,
         }
     }
 
@@ -68,29 +76,29 @@ impl CrossShardConnector {
         let permission_promise = env::promise_create(
             self.connector_permissions_account.clone(),
             "can_make_cross_shard_call_for_contract",
-            &serde_json::to_vec(&(env::predecessor_account_id(), &destination_contract_id)).unwrap(),
+            &serde_json::to_vec(&(env::predecessor_account_id(), &destination_contract_id))
+                .unwrap(),
             NO_DEPOSIT,
-            PERMISSIONS_OUTCOME_GAS
+            PERMISSIONS_OUTCOME_GAS,
         );
 
-        env::promise_return(
-            env::promise_then(
-                permission_promise,
-                env::current_account_id(),
-                "cross_call_resolve",
-                &serde_json::to_vec(&(
-                    destination_contract_id,
-                    destination_contract_method,
-                    destination_contract_args,
-                    destination_gas,
-                    destination_deposit,
-                    source_callback_method,
-                    env::predecessor_account_id().to_string(),
-                )).unwrap(),
-                NO_DEPOSIT,
-                PERMISSIONS_OUTCOME_GAS
-            )
-        );
+        env::promise_return(env::promise_then(
+            permission_promise,
+            env::current_account_id(),
+            "cross_call_resolve",
+            &serde_json::to_vec(&(
+                destination_contract_id,
+                destination_contract_method,
+                destination_contract_args,
+                destination_gas,
+                destination_deposit,
+                source_callback_method,
+                env::predecessor_account_id().to_string(),
+            ))
+            .unwrap(),
+            NO_DEPOSIT,
+            PERMISSIONS_OUTCOME_GAS,
+        ));
     }
 
     pub fn cross_call_resolve(
@@ -126,7 +134,6 @@ impl CrossShardConnector {
         } else {
             false
         }
-
     }
 
     #[payable]

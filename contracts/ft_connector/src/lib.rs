@@ -2,15 +2,14 @@ use admin_controlled::Mask;
 use connector_base::{
     DeployerAware, OtherNetworkAware, OtherNetworkTokenAware, TokenMint, TokenUnlock,
 };
-use types::ConnectorType;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::{UnorderedMap, UnorderedSet};
+use near_sdk::collections::{LookupMap, LookupSet};
 use near_sdk::json_types::U128;
 use near_sdk::serde_json;
 use near_sdk::{
     env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
-use types::FullOutcomeProof;
+use types::{ConnectorType, FullOutcomeProof};
 use utils::{hashes, Hash, Hashable};
 
 use near_sdk::PublicKey;
@@ -89,22 +88,26 @@ impl FungibleTokenConnector {
             "can_bridge",
             &serde_json::to_vec(&(&sender_id, ConnectorType::FT)).unwrap(),
             NO_DEPOSIT,
-            PERMISSIONS_OUTCOME_GAS
+            PERMISSIONS_OUTCOME_GAS,
         );
 
-        env::promise_return(
-            env::promise_then(
-                permission_promise,
-                env::current_account_id(),
-                "lock",
-                &serde_json::to_vec(&(sender_id, env::predecessor_account_id(), amount, msg)).unwrap(),
-                NO_DEPOSIT,
-                PERMISSIONS_OUTCOME_GAS
-            )
-        );
+        env::promise_return(env::promise_then(
+            permission_promise,
+            env::current_account_id(),
+            "lock",
+            &serde_json::to_vec(&(sender_id, env::predecessor_account_id(), amount, msg)).unwrap(),
+            NO_DEPOSIT,
+            PERMISSIONS_OUTCOME_GAS,
+        ));
     }
 
-    pub fn lock(&mut self, sender_id: AccountId, ft_contract_id: AccountId, amount: U128, _msg: String) {
+    pub fn lock(
+        &mut self,
+        sender_id: AccountId,
+        ft_contract_id: AccountId,
+        amount: U128,
+        _msg: String,
+    ) {
         near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
@@ -116,9 +119,7 @@ impl FungibleTokenConnector {
         if verification_success {
             env::log_str(&format!(
                 "CALIMERO_EVENT_LOCK:{}:{}:{}",
-                ft_contract_id,
-                sender_id,
-                amount.0
+                ft_contract_id, sender_id, amount.0
             ));
 
             env::value_return(&serde_json::to_vec(&U128(0).0.to_string()).unwrap());

@@ -90,15 +90,18 @@ macro_rules! impl_other_network_token_aware {
             /// The account of the deployer for bridge token
             deployer_account: Option<AccountId>,
             /// Hashes of the events that were already used.
-            used_events: UnorderedSet<Hash>,
+            used_events: LookupSet<Hash>,
             /// Public key of the account deploying connector.
             owner_pk: PublicKey,
             /// Mappings between FT contract on main network and FT contract on this network
-            contracts_mapping: UnorderedMap<AccountId, AccountId>,
+            contracts_mapping: LookupMap<AccountId, AccountId>,
             /// All FT contracts that were deployed by this account
-            all_contracts: UnorderedSet<AccountId>,
+            all_contracts: LookupSet<AccountId>,
             /// Mask determining all paused functions
             paused: Mask,
+            /// duration in nanoseconds for which proof is considered valid
+            /// not used if not provided
+            proof_validity_ns: Option<u64>,
         }
 
         #[near_bindgen]
@@ -106,18 +109,23 @@ macro_rules! impl_other_network_token_aware {
             /// Initializes the contract.
             /// `prover_account`: NEAR account of the Near Prover contract;
             #[init]
-            fn new(prover_account: AccountId, connector_permissions_account: AccountId) -> Self {
+            fn new(
+                prover_account: AccountId,
+                connector_permissions_account: AccountId,
+                proof_validity_ns: Option<u64>,
+            ) -> Self {
                 require!(!env::state_exists(), "Already initialized");
                 Self {
                     prover_account,
                     connector_permissions_account,
-                    used_events: UnorderedSet::new(b"u".to_vec()),
-                    contracts_mapping: UnorderedMap::new(b"c".to_vec()),
-                    all_contracts: UnorderedSet::new(b"a".to_vec()),
+                    used_events: LookupSet::new(b"u".to_vec()),
+                    contracts_mapping: LookupMap::new(b"c".to_vec()),
+                    all_contracts: LookupSet::new(b"a".to_vec()),
                     locker_account: None,
                     deployer_account: None,
                     owner_pk: env::signer_account_pk(),
                     paused: Mask::default(),
+                    proof_validity_ns,
                 }
             }
 
@@ -214,10 +222,18 @@ macro_rules! impl_other_network_aware {
                 );
             }
 
-            /// Record proof to make sure it is not re-used later for another deposit.
+            /// Record proof if it is valid to make sure it is not re-used later for another deposit.
             fn record_proof(&mut self, proof: &FullOutcomeProof) -> Balance {
                 near_sdk::assert_self();
                 let initial_storage = env::storage_usage();
+
+                require!(
+                    self.proof_validity_ns.is_none()
+                        || env::block_timestamp()
+                            <= proof.block_header_lite.inner_lite.timestamp
+                                + self.proof_validity_ns.unwrap(),
+                    "Proof expired"
+                );
 
                 let proof_key = proof.block_header_lite.hash();
                 require!(

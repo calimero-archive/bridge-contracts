@@ -23,7 +23,7 @@ mod connector {
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
             let connector_permissions_wasm = std::fs::read(
-                "../connector_permissions/target/wasm32-unknown-unknown/release/connector_permissions.wasm",
+                "../wasm/connector_permissions.wasm",
             )
                 .unwrap();
             let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();
