@@ -295,7 +295,13 @@ macro_rules! impl_token_mint {
                     promise_prover,
                     env::current_account_id(),
                     "finish_mint",
-                    &serde_json::to_vec(&(token_contract_account, params, proof)).unwrap(),
+                    &serde_json::to_vec(&(
+                        env::predecessor_account_id(),
+                        token_contract_account,
+                        params,
+                        proof,
+                    ))
+                    .unwrap(),
                     env::attached_deposit(),
                     FINISH_DEPOSIT_GAS,
                 );
@@ -308,6 +314,7 @@ macro_rules! impl_token_mint {
             #[payable]
             fn finish_mint(
                 &mut self,
+                caller_id: AccountId,
                 token_contract_account: String,
                 params: Vec<String>,
                 proof: FullOutcomeProof,
@@ -323,12 +330,16 @@ macro_rules! impl_token_mint {
                 };
                 require!(verification_success, "Failed to verify the proof");
 
-                self.record_proof(&proof);
+                let remaining_deposit = self.record_proof(&proof);
                 let transfer_promise = if let Some(token_contract) = self
                     .contracts_mapping
                     .get(&token_contract_account.parse().unwrap())
                 {
-                    env::promise_create(
+                    let refund_promise = env::promise_batch_create(&caller_id);
+                    env::promise_batch_action_transfer(refund_promise, remaining_deposit);
+
+                    env::promise_then(
+                        refund_promise,
                         token_contract,
                         "mint",
                         &serde_json::to_vec(&$contract::token_mint_params(params)).unwrap(),
@@ -405,6 +416,7 @@ macro_rules! impl_token_unlock {
                     env::current_account_id(),
                     "finish_unlock",
                     &serde_json::to_vec(&(
+                        env::predecessor_account_id(),
                         token_contract_account,
                         token_receiver_account,
                         transferable,
@@ -423,6 +435,7 @@ macro_rules! impl_token_unlock {
             #[payable]
             fn finish_unlock(
                 &mut self,
+                caller_id: AccountId,
                 token_contract_account: AccountId,
                 token_receiver_account: AccountId,
                 transferable: $transferable,
@@ -439,19 +452,18 @@ macro_rules! impl_token_unlock {
                 };
                 require!(verification_success, "Failed to verify the proof");
 
-                let required_deposit = self.record_proof(&proof);
+                let remaining_deposit = self.record_proof(&proof);
 
-                require!(
-                    env::attached_deposit() >= required_deposit,
-                    "Deposit too low"
-                );
+                let refund_promise = env::promise_batch_create(&caller_id);
+                env::promise_batch_action_transfer(refund_promise, remaining_deposit);
 
                 let memo = String::from(format!(
                     "Transfer from {}",
                     self.locker_account.as_ref().unwrap().to_string()
                 ));
 
-                env::promise_return(env::promise_create(
+                env::promise_return(env::promise_then(
+                    refund_promise,
                     token_contract_account,
                     $transfer_function,
                     &serde_json::to_vec(&$contract::token_unlock_params(
