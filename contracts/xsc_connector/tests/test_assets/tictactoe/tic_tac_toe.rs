@@ -97,9 +97,9 @@ impl TicTacToe {
             // Call failed
             return None;
         } else {
-            let deserialized_reponse: usize = near_sdk::serde_json::from_slice::<usize>(&response.unwrap()).unwrap();
-            env::log_str(&format!("GOT THE CALLBACK WITH EXEC RESULT {}", deserialized_reponse));
-            return Some(deserialized_reponse)
+            let deserialized_response: usize = near_sdk::serde_json::from_slice::<usize>(&response.unwrap()).unwrap();
+            env::log_str(&format!("GOT THE CALLBACK WITH EXEC RESULT {}", deserialized_response));
+            return Some(deserialized_response)
         }
     }
 

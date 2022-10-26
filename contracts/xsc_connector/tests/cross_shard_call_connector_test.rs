@@ -179,7 +179,7 @@ mod connector {
                 .unwrap();
 
             let cross_call_receive_response_result = connector
-                .call(&worker, "cross_call_receive_reponse")
+                .call(&worker, "cross_call_receive_response")
                 .args_json(json!({
                     "proof": cross_call_receive_response_proof,
                     "height": 9999, // not important for mock prover
