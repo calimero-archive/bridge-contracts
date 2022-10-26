@@ -261,7 +261,7 @@ impl CrossShardConnector {
     }
 
     #[payable]
-    pub fn cross_call_receive_reponse(&mut self, proof: FullOutcomeProof, height: u64) {
+    pub fn cross_call_receive_response(&mut self, proof: FullOutcomeProof, height: u64) {
         require!(!self.locker_account.is_none());
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
