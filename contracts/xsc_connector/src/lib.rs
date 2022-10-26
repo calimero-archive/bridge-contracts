@@ -175,6 +175,7 @@ impl CrossShardConnector {
             env::current_account_id(),
             "finish_cross_call_execute",
             &serde_json::to_vec(&(
+                env::predecessor_account_id(),
                 destination_contract,
                 destination_contract_method,
                 destination_contract_args,
@@ -195,6 +196,7 @@ impl CrossShardConnector {
     #[payable]
     pub fn finish_cross_call_execute(
         &mut self,
+        caller_id: AccountId,
         destination_contract: AccountId,
         destination_contract_method: String,
         destination_contract_args: Vec<u8>,
@@ -213,14 +215,13 @@ impl CrossShardConnector {
         };
         require!(verification_success, "Failed to verify the proof");
 
-        let required_deposit = self.record_proof(&proof);
+        let remaining_deposit = self.record_proof(&proof);
 
-        require!(
-            env::attached_deposit() >= required_deposit,
-            "Deposit too low"
-        );
+        let refund_promise = env::promise_batch_create(&caller_id);
+        env::promise_batch_action_transfer(refund_promise, remaining_deposit);
 
-        let execution_promise = env::promise_create(
+        let execution_promise = env::promise_then(
+            refund_promise,
             destination_contract,
             &destination_contract_method,
             &destination_contract_args,
@@ -292,8 +293,14 @@ impl CrossShardConnector {
             promise_prover,
             env::current_account_id(),
             "finish_cross_response",
-            &serde_json::to_vec(&(source_contract, source_contract_method, response, proof))
-                .unwrap(),
+            &serde_json::to_vec(&(
+                env::predecessor_account_id(),
+                source_contract,
+                source_contract_method,
+                response,
+                proof,
+            ))
+            .unwrap(),
             env::attached_deposit(),
             env::prepaid_gas() - VERIFY_LOG_ENTRY_GAS - CALL_GAS,
         );
@@ -304,6 +311,7 @@ impl CrossShardConnector {
     #[payable]
     pub fn finish_cross_response(
         &mut self,
+        caller_id: AccountId,
         source_contract: AccountId,
         source_contract_method: String,
         response: String,
@@ -318,12 +326,10 @@ impl CrossShardConnector {
         };
         require!(verification_success, "Failed to verify the proof");
 
-        let required_deposit = self.record_proof(&proof);
+        let remaining_deposit = self.record_proof(&proof);
 
-        require!(
-            env::attached_deposit() >= required_deposit,
-            "Deposit too low"
-        );
+        let refund_promise = env::promise_batch_create(&caller_id);
+        env::promise_batch_action_transfer(refund_promise, remaining_deposit);
 
         let args = if response == "FAILED!" {
             None
@@ -331,7 +337,8 @@ impl CrossShardConnector {
             Some(base64::decode(response).unwrap())
         };
 
-        env::promise_return(env::promise_create(
+        env::promise_return(env::promise_then(
+            refund_promise,
             source_contract,
             &source_contract_method,
             &serde_json::to_vec(&serde_json::json!({ "response": args })).unwrap(),

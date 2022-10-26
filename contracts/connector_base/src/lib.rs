@@ -31,6 +31,7 @@ pub trait TokenUnlock<T> {
     fn unlock(&mut self, proof: FullOutcomeProof, height: u64);
     fn finish_unlock(
         &mut self,
+        caller_id: AccountId,
         token_contract_account: AccountId,
         token_receiver_account: AccountId,
         transferable: T,
@@ -42,6 +43,7 @@ pub trait TokenMint {
     fn mint(&mut self, proof: FullOutcomeProof, height: u64);
     fn finish_mint(
         &mut self,
+        caller_id: AccountId,
         token_contract_account: String,
         params: Vec<String>,
         proof: FullOutcomeProof,
