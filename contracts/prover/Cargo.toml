@@ -20,8 +20,9 @@ primitive-types = "0.10"
 thiserror = "1"
 
 [dev-dependencies]
-workspaces = "0.2.1"
+workspaces = "0.4.1"
 tokio = { version = "1.18.1", features = ["full"] }
+near-jsonrpc-client = "= 0.4.0-beta.0"
 near-units = "0.2.0"
 test_utils = { path = "../test_utils" }
 
