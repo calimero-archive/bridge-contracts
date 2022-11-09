@@ -13,9 +13,14 @@ mod connector {
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
 
-        const TIC_TAC_TOE_CONTRACT_ACCOUNT_ID: &str = "dev-1666269241011-86059863198522";
+        const TIC_TAC_TOE_ACCOUNT_90: &str = "dev-1666269241011-86059863198522";
+        const TIC_TAC_TOE_ACCOUNT_REL42: &str = "dev-1668382397562-28997434477113";
 
-        async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract, Contract) {
+        const LOCKER_ACCOUNT_90: &str = "xscc.90.calimero.testnet";
+        const LOCKER_ACCOUNT_REL42: &str = "xsc_connector.rel42.calimero.testnet";
+        
+
+        async fn init(tic_tac_toe_account: &str, locker_account: &str) -> (Worker<Sandbox>, Contract, Contract, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
             // deploy contracts
             let prover_wasm = std::fs::read(
@@ -40,7 +45,7 @@ mod connector {
                 .unwrap();
 
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_1");
-            let tla = workspaces::AccountId::try_from(TIC_TAC_TOE_CONTRACT_ACCOUNT_ID.to_string()).unwrap();
+            let tla = workspaces::AccountId::try_from(tic_tac_toe_account.to_string()).unwrap();
 
             let tic_tac_toe_contract = worker.create_tla_and_deploy(tla, sec, &tic_tac_toe_wasm)
                 .await
@@ -82,7 +87,7 @@ mod connector {
             connector_contract
                 .call(&worker, "set_locker")
                 .args_json(json!({
-                "locker_account": "xscc.90.calimero.testnet",
+                "locker_account": locker_account,
             }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
@@ -139,7 +144,7 @@ mod connector {
             assert!(cross_call_execute_result.logs().len() == 3);
             assert!(cross_call_execute_result.logs()[0] == "RecordProof:f596ebe3e36802cd905f53bb44a09c83feaad206ae6d8535262b1f4c4d5c00bc");
             assert!(cross_call_execute_result.logs()[1] == format!("game ended, called by the connector {}", connector.id().to_string()));
-            assert!(cross_call_execute_result.logs()[2] == "CALIMERO_EVENT_CROSS_RESPONSE:testtictactoe.90.calimero.testnet:callback_game_ended:");
+            assert!(cross_call_execute_result.logs()[2] == format!("CALIMERO_EVENT_CROSS_RESPONSE:testtictactoe.90.calimero.testnet:callback_game_ended::{}", TIC_TAC_TOE_ACCOUNT_90));
 
             let ended_game_after_cross_call: serde_json::Value = worker.view(
                 contract_making_cross_shard_calls.id(),
@@ -166,7 +171,7 @@ mod connector {
         }
 
         async fn cross_call_receive_response(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, _contract_making_cross_shard_calls: &Contract, cross_call_receive_response_proof: &FullOutcomeProof) {
-            let expected_block_merkle_root: Hash = decode_hex("b0b9a40654dfd0daff7829f71314e08eb27bafcd1c65de3fe13136afdbddeea1").try_into().unwrap();
+            let expected_block_merkle_root: Hash = decode_hex("3681f812e71c92e11cf92bf19494916f994be8688a182b9b078e9025ac68f046").try_into().unwrap();
 
             prover
                 .call(&worker, "add_approved_hash")
@@ -192,20 +197,20 @@ mod connector {
                 .unwrap();
 
             assert!(cross_call_receive_response_result.logs().len() == 2);
-            assert!(cross_call_receive_response_result.logs()[0] == "RecordProof:b0b9a40654dfd0daff7829f71314e08eb27bafcd1c65de3fe13136afdbddeea1");
-            assert!(cross_call_receive_response_result.logs()[1] == "GOT THE CALLBACK WITH EXEC RESULT 0");
+            assert!(cross_call_receive_response_result.logs()[0] == "RecordProof:3681f812e71c92e11cf92bf19494916f994be8688a182b9b078e9025ac68f046");
+            assert!(cross_call_receive_response_result.logs()[1] == "GOT THE CALLBACK WITH EXEC RESULT 1");
         }
 
         #[tokio::test]
         async fn test_cross_call_execute() {
-            let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init().await;
+            let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init(TIC_TAC_TOE_ACCOUNT_90, LOCKER_ACCOUNT_90).await;
             let cross_call_execute_proof = &file_as_json::<FullOutcomeProof>("test_assets/cross_call_execute_proof.json").unwrap();
             cross_call_execute(&worker, &prover, &connector, &tic_tac_toe_contract, &cross_call_execute_proof).await;
         }
 
         #[tokio::test]
         async fn test_cross_call_receive_response() {
-            let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init().await;
+            let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init(TIC_TAC_TOE_ACCOUNT_REL42, LOCKER_ACCOUNT_REL42).await;
             let cross_call_receive_response_proof = &file_as_json::<FullOutcomeProof>("test_assets/cross_call_receive_response_proof.json").unwrap();
             cross_call_receive_response(&worker, &prover, &connector, &tic_tac_toe_contract, &cross_call_receive_response_proof).await;
         }
@@ -213,7 +218,7 @@ mod connector {
         #[tokio::test]
         #[should_panic]
         async fn test_proof_reuse_panics() {
-            let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init().await;
+            let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init(TIC_TAC_TOE_ACCOUNT_REL42, LOCKER_ACCOUNT_REL42).await;
             let cross_call_receive_response_proof = &file_as_json::<FullOutcomeProof>("test_assets/cross_call_receive_response_proof.json").unwrap();
             cross_call_receive_response(&worker, &prover, &connector, &tic_tac_toe_contract, &cross_call_receive_response_proof).await;
 
@@ -223,7 +228,7 @@ mod connector {
 
         #[tokio::test]
         async fn test_cross_call_for_denied_account() {
-            let (worker, _prover, connector, _tic_tac_toe_contract, connector_permissions) = init().await;
+            let (worker, _prover, connector, _tic_tac_toe_contract, connector_permissions) = init(TIC_TAC_TOE_ACCOUNT_90, LOCKER_ACCOUNT_90).await;
 
             const ALICE_ACCOUNT_ID: &str= "dev-1000000000001-10000000000001";
 
@@ -246,7 +251,7 @@ mod connector {
             let cross_call_result_for_denied_account = alice_account
                 .call(&worker, connector.id(), "cross_call")
                 .args_json(json!({
-                    "destination_contract_id": TIC_TAC_TOE_CONTRACT_ACCOUNT_ID,
+                    "destination_contract_id": TIC_TAC_TOE_ACCOUNT_90,
                     "destination_contract_method": "start_game",
                     "destination_contract_args": json!({"player_a":"player_a.testnet","player_b":"player_b.testnet"}).to_string(),
                     "destination_gas": Gas(20_000_000_000_000),
@@ -279,7 +284,7 @@ mod connector {
             let cross_call_result_for_allowed_account = alice_account
                 .call(&worker, connector.id(), "cross_call")
                 .args_json(json!({
-                    "destination_contract_id": TIC_TAC_TOE_CONTRACT_ACCOUNT_ID,
+                    "destination_contract_id": TIC_TAC_TOE_ACCOUNT_90,
                     "destination_contract_method": "start_game",
                     "destination_contract_args": json!({
                         "player_a": "player_a.testnet",
@@ -305,7 +310,7 @@ mod connector {
             let parts: Vec<&str> = cross_call_result_for_allowed_account.logs()[0].split(":").collect();
             assert_eq!(parts.len(), 8);
             assert!(parts[0] == "CALIMERO_EVENT_CROSS_CALL");
-            assert!(parts[1] == TIC_TAC_TOE_CONTRACT_ACCOUNT_ID);
+            assert!(parts[1] == TIC_TAC_TOE_ACCOUNT_90);
             assert!(parts[2] == "start_game");
             assert!(parts[3] == base64::encode(json!({"player_a":"player_a.testnet","player_b":"player_b.testnet"}).to_string())); 
             assert!(parts[4] == "20000000000000");
