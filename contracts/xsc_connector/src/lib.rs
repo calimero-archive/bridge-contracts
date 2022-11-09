@@ -130,10 +130,9 @@ impl CrossShardConnector {
                 cross_call_initiator_account_id,
                 source_callback_method,
             ));
-            true
-        } else {
-            false
         }
+
+        verification_success
     }
 
     #[payable]
@@ -222,7 +221,7 @@ impl CrossShardConnector {
 
         let execution_promise = env::promise_then(
             refund_promise,
-            destination_contract,
+            destination_contract.clone(),
             &destination_contract_method,
             &destination_contract_args,
             destination_deposit,
@@ -233,7 +232,12 @@ impl CrossShardConnector {
             execution_promise,
             env::current_account_id(),
             "calimero_response",
-            &serde_json::to_vec(&(source_contract, source_contract_method)).unwrap(),
+            &serde_json::to_vec(&(
+                source_contract,
+                source_contract_method,
+                destination_contract,
+            ))
+            .unwrap(),
             NO_DEPOSIT,
             CALL_GAS,
         );
@@ -245,6 +249,7 @@ impl CrossShardConnector {
         &mut self,
         source_contract: AccountId,
         source_contract_method: String,
+        destination_contract: AccountId,
     ) {
         near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
@@ -255,8 +260,8 @@ impl CrossShardConnector {
         };
 
         env::log_str(&format!(
-            "CALIMERO_EVENT_CROSS_RESPONSE:{}:{}:{}",
-            source_contract, source_contract_method, execution_result,
+            "CALIMERO_EVENT_CROSS_RESPONSE:{}:{}:{}:{}",
+            source_contract, source_contract_method, execution_result, destination_contract
         ));
     }
 
@@ -274,12 +279,13 @@ impl CrossShardConnector {
             .split(":")
             .collect();
         require!(
-            parts.len() == 4 && parts[0] == "CALIMERO_EVENT_CROSS_RESPONSE",
+            parts.len() == 5 && parts[0] == "CALIMERO_EVENT_CROSS_RESPONSE",
             "Untrusted proof, calimero_response receipt proof required"
         );
         let source_contract = parts[1];
         let source_contract_method = parts[2];
         let response = parts[3];
+        let destination_predecessor = parts[4];
 
         let promise_prover = env::promise_create(
             self.prover_account.clone(),
@@ -297,6 +303,7 @@ impl CrossShardConnector {
                 env::predecessor_account_id(),
                 source_contract,
                 source_contract_method,
+                destination_predecessor,
                 response,
                 proof,
             ))
@@ -314,6 +321,7 @@ impl CrossShardConnector {
         caller_id: AccountId,
         source_contract: AccountId,
         source_contract_method: String,
+        destination_predecessor: AccountId,
         response: String,
         proof: FullOutcomeProof,
     ) {
@@ -341,7 +349,7 @@ impl CrossShardConnector {
             refund_promise,
             source_contract,
             &source_contract_method,
-            &serde_json::to_vec(&serde_json::json!({ "response": args })).unwrap(),
+            &serde_json::to_vec(&serde_json::json!({ "response": args, "calimero_predecessor_id": destination_predecessor })).unwrap(),
             NO_DEPOSIT,
             CALL_GAS,
         ))
