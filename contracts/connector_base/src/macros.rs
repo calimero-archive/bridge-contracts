@@ -144,7 +144,7 @@ macro_rules! impl_other_network_token_aware {
 
                 let verification_success = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {
-                        serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0]
+                        serde_json::from_slice::<bool>(&x).unwrap()
                     }
                     _ => env::panic_str("Prover failed"),
                 };
@@ -324,7 +324,7 @@ macro_rules! impl_token_mint {
 
                 let verification_success = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {
-                        serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0]
+                        serde_json::from_slice::<bool>(&x).unwrap()
                     }
                     _ => env::panic_str("Prover failed"),
                 };
@@ -446,7 +446,7 @@ macro_rules! impl_token_unlock {
 
                 let verification_success = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {
-                        serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0]
+                        serde_json::from_slice::<bool>(&x).unwrap()
                     }
                     _ => env::panic_str("Prover failed"),
                 };

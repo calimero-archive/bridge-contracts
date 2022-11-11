@@ -210,7 +210,7 @@ impl CrossShardConnector {
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
-            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
+            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
             _ => env::panic_str("Prover failed"),
         };
         require!(verification_success, "Failed to verify the proof");
@@ -321,7 +321,7 @@ impl CrossShardConnector {
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
-            PromiseResult::Successful(x) => serde_json::from_slice::<Vec<bool>>(&x).unwrap()[0],
+            PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
             _ => env::panic_str("Prover failed"),
         };
         require!(verification_success, "Failed to verify the proof");

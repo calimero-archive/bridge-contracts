@@ -80,7 +80,7 @@ impl Prover {
             expected_block_merkle_root == Some(computed_block_merkle_root),
             "NearProver: block proof is not valid"
         );
-        env::value_return(&serde_json::to_vec(&(true,)).unwrap());
+        env::value_return(&serde_json::to_vec(&true).unwrap());
     }
 
     fn compute_root(node: &Hash, path: MerklePath) -> Hash {
