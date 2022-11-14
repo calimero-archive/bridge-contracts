@@ -1,3 +1,5 @@
+// Given this is borrowed from nearcore before crate becomes wasm ready, we will not check lint
+#![allow(clippy::all)]
 use std::cmp::Ordering;
 use std::convert::AsRef;
 use std::fmt::{Debug, Display, Formatter};

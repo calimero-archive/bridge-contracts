@@ -1,0 +1,240 @@
+on: [push]
+
+name: Lint Check
+
+jobs:
+  light_client:
+    name: Light Client
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/light_client
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  prover:
+    name: Prover
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/prover
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  connector_permissions:
+    name: Connector Permissions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/connector_permissions
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  ft_connector:
+    name: FT Connector
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/ft_connector
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  nft_connector:
+    name: NFT Connector
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/nft_connector
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  xsc_connector:
+    name: XSC Connector
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/xsc_connector
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  ft_bridge_token:
+    name: FT Bridge Token
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/ft_bridge_token
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  nft_bridge_token:
+    name: NFT Bridge Token
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/nft_bridge_token
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  bridge_token_deployer:
+    name: Bridge Token Deployer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup target add wasm32-unknown-unknown
+          rustup component add clippy
+
+      - name: Prepare Bridge Token
+        run: |
+          cd contracts/ft_bridge_token
+          ./build.sh
+          ./deploy.sh
+          cd
+
+      - name: Run Clippy
+        run: |
+          cd contracts/bridge_token_deployer
+          BRIDGE_TOKEN=../ft_bridge_token.wasm cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  types:
+    name: Types
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/types
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  utils:
+    name: Utils
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/utils
+          cargo clippy -- -D warnings -A clippy::too_many_arguments
+
+  connector_base:
+    name: Connector Base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+          rustup component add clippy
+
+      - name: Run Clippy
+        run: |
+          cd contracts/connector_base
+          cargo clippy -- -D warnings -A clippy::too_many_arguments

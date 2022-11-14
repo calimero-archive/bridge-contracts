@@ -3,7 +3,7 @@ use near_sdk::{
     env, serde_json, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult
 };
 
-const BRIDGE_TOKEN_BINARY: &'static [u8] = include_bytes!(std::env!(
+const BRIDGE_TOKEN_BINARY: &[u8] = include_bytes!(std::env!(
     "BRIDGE_TOKEN",
     "Set BRIDGE_TOKEN to be the path of the bridge token binary"
 ));
@@ -59,9 +59,9 @@ impl BridgeTokenDeployer {
         let bridge_token_account_id = AccountId::new_unchecked(format!(
             "{}.{}",
             source_address
-                .strip_suffix(&format!(".{}", self.source_master_account.to_string()))
+                .strip_suffix(&format!(".{}", self.source_master_account))
                 .unwrap_or(&source_address)
-                .replace(".", "_"),
+                .replace('.', "_"),
             env::current_account_id()
         ));
 
@@ -69,7 +69,7 @@ impl BridgeTokenDeployer {
         env::promise_batch_action_create_account(promise);
         env::promise_batch_action_transfer(promise, BRIDGE_TOKEN_INIT_BALANCE);
         env::promise_batch_action_add_key_with_full_access(promise, &env::signer_account_pk(), 0);
-        env::promise_batch_action_deploy_contract(promise, &BRIDGE_TOKEN_BINARY.to_vec());
+        env::promise_batch_action_deploy_contract(promise, BRIDGE_TOKEN_BINARY);
         env::promise_batch_action_function_call(
             promise,
             "new",

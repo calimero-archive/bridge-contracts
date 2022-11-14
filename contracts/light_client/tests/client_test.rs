@@ -9,8 +9,6 @@ mod light_client {
         use utils::hashes::encode_hex;
 
         const TEST_BLOCK_TIMESTAMP_MULTIPLIER: u64 = 100000000;
-        const TEST_LOCK_DURATION: u64 = 10;
-        const TEST_REPLACE_DURATION: u64 = 20000000000;
 
         fn get_context(
             predecessor_account_id: AccountId,
@@ -28,7 +26,7 @@ mod light_client {
         }
 
         fn init(blocks_to_keep: Option<usize>) -> LightClient {
-            LightClient::new(TEST_LOCK_DURATION, TEST_REPLACE_DURATION, blocks_to_keep)
+            LightClient::new(blocks_to_keep)
         }
 
         #[test]

@@ -91,9 +91,7 @@ impl Prover {
                 types::MERKLE_PATH_RIGHT => hashes::combine_hash2(hash, item.hash()),
                 _ => panic!("NearProver: unknown merkle path"),
             }
-            .try_into()
-            .unwrap()
         }
-        return hash;
+        hash
     }
 }

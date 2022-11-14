@@ -45,48 +45,48 @@ impl ConnectorPermissions {
     }
 
     fn connector_from_type(&self, connector_type: ConnectorType) -> &AccountId {
-        return match connector_type {
+        match connector_type {
             ConnectorType::FT => &self.ft_connector_account,
             ConnectorType::NFT => &self.nft_connector_account,
             ConnectorType::XSC => &self.xsc_connector_account,
-        };
+        }
     }
 
     /// returns true if account_id is not denied per connector type
     pub fn can_bridge(&self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
-        return match connector_type {
-            ConnectorType::FT => !self.deny_listed_accounts_for_bridging_fts.contains(&account_id),
-            ConnectorType::NFT => !self.deny_listed_accounts_for_bridging_nfts.contains(&account_id),
-            ConnectorType::XSC => !self.deny_listed_accounts_for_cross_shard_calls.contains(&account_id),
+        match connector_type {
+            ConnectorType::FT => !self.deny_listed_accounts_for_bridging_fts.contains(account_id),
+            ConnectorType::NFT => !self.deny_listed_accounts_for_bridging_nfts.contains(account_id),
+            ConnectorType::XSC => !self.deny_listed_accounts_for_cross_shard_calls.contains(account_id),
         }
     }
 
     /// adds the account id to a denied list per connector type, can only be called by the corresponding connector
-    pub fn deny_bridge(&mut self, account_id: AccountId, connector_type: ConnectorType) -> bool {
+    pub fn deny_bridge(&mut self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             *self.connector_from_type(connector_type),
             "Only corresponding connector can add accounts to the deny list"
         );
-        return match connector_type {
-            ConnectorType::FT => self.deny_listed_accounts_for_bridging_fts.insert(&account_id),
-            ConnectorType::NFT => self.deny_listed_accounts_for_bridging_nfts.insert(&account_id),
-            ConnectorType::XSC => self.deny_listed_accounts_for_cross_shard_calls.insert(&account_id),
+        match connector_type {
+            ConnectorType::FT => self.deny_listed_accounts_for_bridging_fts.insert(account_id),
+            ConnectorType::NFT => self.deny_listed_accounts_for_bridging_nfts.insert(account_id),
+            ConnectorType::XSC => self.deny_listed_accounts_for_cross_shard_calls.insert(account_id),
         }
 
     }
 
     /// removes the account id from the denied list per connector type, can only be called by the corresponding connector
-    pub fn allow_bridge(&mut self, account_id: AccountId, connector_type: ConnectorType) -> bool {
+    pub fn allow_bridge(&mut self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             *self.connector_from_type(connector_type),
             "Only corresponding connector can remove accounts from the deny list"
         );
-        return match connector_type {
-            ConnectorType::FT => self.deny_listed_accounts_for_bridging_fts.remove(&account_id),
-            ConnectorType::NFT => self.deny_listed_accounts_for_bridging_nfts.remove(&account_id),
-            ConnectorType::XSC => self.deny_listed_accounts_for_cross_shard_calls.remove(&account_id),
+        match connector_type {
+            ConnectorType::FT => self.deny_listed_accounts_for_bridging_fts.remove(account_id),
+            ConnectorType::NFT => self.deny_listed_accounts_for_bridging_nfts.remove(account_id),
+            ConnectorType::XSC => self.deny_listed_accounts_for_cross_shard_calls.remove(account_id),
         }
     }
 
@@ -112,9 +112,9 @@ impl ConnectorPermissions {
 
     /// checks if account_id is denied to make cross shard contract calls and whether the account_id is denied from calling a specific contract id
     pub fn can_make_cross_shard_call_for_contract(&self, account_id: &AccountId, contract_id: AccountId) -> bool {
-        if !self.can_bridge(&account_id, ConnectorType::XSC) {
+        if !self.can_bridge(account_id, ConnectorType::XSC) {
             return false;
         }
-        return !self.deny_listed_account_per_contract_for_cross_shard_calls.contains(&format!("{}|{}", account_id, contract_id))
+        !self.deny_listed_account_per_contract_for_cross_shard_calls.contains(&format!("{}|{}", account_id, contract_id))
     }
 }

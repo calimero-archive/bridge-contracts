@@ -155,7 +155,7 @@ macro_rules! impl_other_network_token_aware {
             }
 
             fn register_on_other(&mut self, proof: FullOutcomeProof, height: u64) {
-                require!(!self.locker_account.is_none());
+                require!(self.locker_account.is_some());
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id
                         == self.locker_account.as_ref().unwrap().to_string(),
@@ -266,7 +266,7 @@ macro_rules! impl_token_mint {
             #[payable]
             fn mint(&mut self, proof: FullOutcomeProof, height: u64) {
                 self.assert_not_paused(PAUSE_DEPOSIT);
-                require!(!self.locker_account.is_none());
+                require!(self.locker_account.is_some());
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id
                         == self.locker_account.as_ref().unwrap().to_string(),
@@ -379,7 +379,7 @@ macro_rules! impl_token_unlock {
             /// Used when receiving Token from other network
             #[payable]
             fn unlock(&mut self, proof: FullOutcomeProof, height: u64) {
-                require!(!self.locker_account.is_none());
+                require!(self.locker_account.is_some());
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id
                         == self.locker_account.as_ref().unwrap().to_string(),
