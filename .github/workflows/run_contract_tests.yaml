@@ -1,14 +1,14 @@
 on: [push]
 
-name: CI
+name: Tests
 
 jobs:
-  build_and_test:
-    name: Contract tests
+  build_mocks:
+    name: Mock build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set rust version
         run: |
@@ -17,64 +17,223 @@ jobs:
           rustup override set 1.61
 
       - name: Install `wasm32-unknown-unknown`
-        run: rustup target add wasm32-unknown-unknown      
+        run: rustup target add wasm32-unknown-unknown    
 
-      - name: Run light client tests
-        run: cd contracts/light_client; cargo test -- --nocapture
-
-      - name: Run prover tests
+      - name: Build Contracts
         run: |
-          cd contracts/mock_light_client
+          cd contracts/
+          cd mock_light_client
           ./build.sh
-          cd ../prover
-          ./build.sh
-          cargo test -- --nocapture
-
-      - name: Run types tests
-        run: cd contracts/types; cargo test -- --nocapture
-
-      - name: Run connector_permissions tests
-        run: |
-          cd contracts/connector_permissions
-          ./build.sh
-          cargo test -- --nocapture
-
-      - name: Run ft_connector tests
-        run: |
-          cd contracts/ft_bridge_token
-          ./build.sh
-          ./deploy.sh
-          cd ../bridge_token_deployer
-          ./build_ft.sh
           cd ../mock_prover
           ./build.sh
-          cd ../connector_permissions
-          ./build.sh
-          cd ../ft_connector
-          ./build.sh
+          cd ../..
+
+      - name: Move builds
+        run: |
+          cp contracts/mock_prover/target/wasm32-unknown-unknown/release/mock_prover.wasm .
+          cp contracts/mock_light_client/target/wasm32-unknown-unknown/release/mock_light_client.wasm .
+
+      - name: Store builds
+        uses: actions/upload-artifact@v3
+        with:
+          name: mocks
+          path: |
+            mock_prover.wasm
+            mock_light_client.wasm
+
+  test_rust:
+    name: Rust test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+
+      - name: Run Light Client Test
+        run: |
+          cd contracts/light_client 
+          cargo test -- --nocapture
+          cd
+      - name: Run Types Test
+        run: |
+          cd contracts/types
           cargo test -- --nocapture
 
-      - name: Run nft_connector tests
-        run: |
-          cd contracts/nft_bridge_token
-          ./build.sh
-          ./deploy.sh
-          cd ../bridge_token_deployer
-          ./build_nft.sh
-          cd ../mock_prover
-          ./build.sh
-          cd ../connector_permissions
-          ./build.sh
-          cd ../nft_connector
-          ./build.sh
-          cargo test -- --nocapture
+  test_prover:
+    needs: build_mocks
+    name: Prover test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
 
-      - name: Run xsc_connector tests
+      - name: Download mocks
+        uses: actions/download-artifact@v3
+        with:
+          name: mocks
+      - name: Move mocks
         run: |
-          cd contracts/mock_prover
-          ./build.sh
-          cd ../connector_permissions
-          ./build.sh
-          cd ../xsc_connector
-          ./build.sh
-          cargo test -- --nocapture
+          mkdir contracts/mock_light_client/target
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+
+      - name: Run Prover Test
+        run: cd contracts/prover; ./build.sh; cargo test -- --nocapture
+
+  test_permission:
+    needs: build_mocks
+    name: Contracts Permissions test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Download mocks
+        uses: actions/download-artifact@v3
+        with:
+          name: mocks
+      - name: Move mocks
+        run: |
+          mkdir contracts/mock_light_client/target
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          mkdir contracts/mock_prover/target
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+
+      - name: Run Contracts Permissions Test
+        run: cd contracts/connector_permissions; ./build.sh; cargo test -- --nocapture
+
+  test_ft:
+    needs: build_mocks
+    name: FT test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Download mocks
+        uses: actions/download-artifact@v3
+        with:
+          name: mocks
+      - name: Move mocks
+        run: |
+          mkdir contracts/mock_light_client/target
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          mkdir contracts/mock_prover/target
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+
+      - name: Run FT Test
+        run: cd contracts/ft_connector; ./build.sh; cargo test -- --nocapture
+
+  test_nft:
+    needs: build_mocks
+    name: NFT test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Download mocks
+        uses: actions/download-artifact@v3
+        with:
+          name: mocks
+      - name: Move mocks
+        run: |
+          mkdir contracts/mock_light_client/target
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          mkdir contracts/mock_prover/target
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+
+      - name: Run NFT Test
+        run: cd contracts/nft_connector; ./build.sh; cargo test -- --nocapture
+
+  test_xsc:
+    needs: build_mocks
+    name: XSC test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Download mocks
+        uses: actions/download-artifact@v3
+        with:
+          name: mocks
+      - name: Move mocks
+        run: |
+          mkdir contracts/mock_light_client/target
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
+          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          mkdir contracts/mock_prover/target
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
+          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+        
+      - name: Run XSC Test
+        run: cd contracts/xsc_connector; ./build.sh; cargo test -- --nocapture
