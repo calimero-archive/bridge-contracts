@@ -4,8 +4,8 @@ extern crate near_sdk;
 
 use admin_controlled::Mask;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use std::collections::VecDeque;
 use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
+use std::collections::VecDeque;
 use types::signature::Signature;
 use types::{Block, Epoch, Validator};
 use utils::{hashes, Hash, Hashable};
@@ -36,10 +36,6 @@ pub struct LightClient {
     timestamp: u64,
     signature_set: u128,
     signatures: Vec<Signature>,
-    // lockDuration and replaceDuration shouldn't be extremely big, so adding them to an uint64 timestamp should not overflow uint128.
-    lock_duration: u64,
-    // replaceDuration is in nanoseconds, because it is a difference between NEAR timestamps.
-    replace_duration: u64,
     current_epoch_index: usize,
     block_hashes: VecDeque<(u64, Hash)>,
     block_merkle_roots: VecDeque<(u64, Hash)>,
@@ -54,7 +50,7 @@ const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
 #[near_bindgen]
 impl LightClient {
     #[init]
-    pub fn new(lock_duration: u64, replace_duration: u64, max_blocks: Option<usize>) -> Self {
+    pub fn new(max_blocks: Option<usize>) -> Self {
         let blocks_to_keep = if let Some(blocks_to_keep) = max_blocks {
             blocks_to_keep
         } else {
@@ -72,8 +68,6 @@ impl LightClient {
             timestamp: 0,
             signature_set: 0,
             signatures: Vec::new(),
-            lock_duration: lock_duration,
-            replace_duration: replace_duration,
             current_epoch_index: 0,
             block_hashes: VecDeque::new(),
             block_merkle_roots: VecDeque::new(),
@@ -83,7 +77,7 @@ impl LightClient {
     }
 
     pub fn is_initialized(&self) -> bool {
-        return self.initialized;
+        self.initialized
     }
 
     #[cfg(reset)]
@@ -137,14 +131,16 @@ impl LightClient {
         self.current_height = block.inner_lite.height;
         self.epochs[0].epoch_id = block.inner_lite.epoch_id;
         self.epochs[1].epoch_id = block.inner_lite.next_epoch_id;
-        self.block_hashes.push_front((self.current_height, block.hash()));
-        self.block_merkle_roots.push_front((self.current_height, block.inner_lite.block_merkle_root));
+        self.block_hashes
+            .push_front((self.current_height, block.hash()));
+        self.block_merkle_roots
+            .push_front((self.current_height, block.inner_lite.block_merkle_root));
 
         LightClient::set_block_producers(&block.next_bps.unwrap(), &mut self.epochs[1]);
     }
 
     pub fn current_height(&self) -> u64 {
-        return self.current_height;
+        self.current_height
     }
 
     pub fn block_hashes(&self, height: u64) -> Option<Hash> {
@@ -153,7 +149,7 @@ impl LightClient {
                 return Some(*hash);
             }
         }
-        return None;
+        None
     }
 
     pub fn block_merkle_roots(&self, height: u64) -> Option<Hash> {
@@ -162,7 +158,7 @@ impl LightClient {
                 return Some(*merkle_root);
             }
         }
-        return None;
+        None
     }
 
     pub fn add_light_client_block(&mut self, block: Block) {
@@ -204,7 +200,7 @@ impl LightClient {
         // The sum of uint128 values cannot overflow.
         let mut voted_for: u128 = 0;
         for i in 0..this_epoch.keys.len() {
-            if let Some(_) = block.approvals_after_next[i] {
+            if block.approvals_after_next[i].is_some() {
                 voted_for += this_epoch.stakes[i];
             }
         }
@@ -225,7 +221,7 @@ impl LightClient {
 
         self.hash = block.hash();
         self.merkle_root = block.inner_lite.block_merkle_root;
-        self.next_hash = hashes::combine_hash2(block.next_block_inner_hash, self.hash );
+        self.next_hash = hashes::combine_hash2(block.next_block_inner_hash, self.hash);
 
         let keys_len = this_epoch.keys.len();
         self.signature_set = 0;
@@ -249,9 +245,10 @@ impl LightClient {
         }
         self.last_submitter = env::predecessor_account_id();
 
-
-        self.block_hashes.push_front((self.current_height, block.hash()));
-        self.block_merkle_roots.push_front((self.current_height, block.inner_lite.block_merkle_root));
+        self.block_hashes
+            .push_front((self.current_height, block.hash()));
+        self.block_merkle_roots
+            .push_front((self.current_height, block.inner_lite.block_merkle_root));
 
         while self.block_hashes.len() > self.blocks_to_keep {
             self.block_hashes.pop_back();
@@ -281,13 +278,13 @@ impl LightClient {
         ]
         .concat();
 
-        return signature.verify(&message, &untrusted_epoch.keys[signature_index]);
+        signature.verify(&message, &untrusted_epoch.keys[signature_index])
     }
 
     fn hash_of_block_producers(block_producers: &Vec<Validator>) -> Hash {
-        return env::sha256(&block_producers.try_to_vec().expect("Failed to serialize"))
+        env::sha256(&block_producers.try_to_vec().expect("Failed to serialize"))
             .try_into()
-            .unwrap();
+            .unwrap()
     }
 
     fn set_block_producers(block_producers: &Vec<Validator>, epoch: &mut Epoch) {

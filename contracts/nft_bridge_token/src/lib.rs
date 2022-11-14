@@ -72,12 +72,25 @@ impl BridgeToken {
         // Only owner can change the metadata
         assert!(self.controller_or_self());
 
-        name.map(|name| self.name = name);
-        symbol.map(|symbol| self.symbol = symbol);
-        reference.map(|reference| self.reference = reference);
-        reference_hash.map(|reference_hash| self.reference_hash = reference_hash);
-        icon.map(|icon| self.icon = Some(icon));
-        base_uri.map(|base_uri| self.base_uri = Some(base_uri));
+        if let Some(name) = name {
+            self.name = name
+        }
+
+        if let Some(symbol) = symbol {
+            self.symbol = symbol
+        }
+
+        if let Some(reference) = reference {
+            self.reference = reference
+        }
+
+        if let Some(reference_hash) = reference_hash {
+            self.reference_hash = reference_hash
+        }
+
+        self.icon = icon;
+
+        self.base_uri = base_uri;
     }
 
     #[payable]
@@ -117,19 +130,19 @@ impl BridgeToken {
 
         if let Some(tokens_per_owner) = &mut self.token.tokens_per_owner {
             // owner_tokens should always exist, so call `unwrap` without guard
-            let mut owner_tokens = tokens_per_owner.get(&owner).unwrap_or_else(|| {
+            let mut owner_tokens = tokens_per_owner.get(owner).unwrap_or_else(|| {
                 env::panic_str("Unable to access tokens per owner in unguarded call.")
             });
             owner_tokens.remove(&token_id);
             if owner_tokens.is_empty() {
-                tokens_per_owner.remove(&owner);
+                tokens_per_owner.remove(owner);
             } else {
-                tokens_per_owner.insert(&owner, &owner_tokens);
+                tokens_per_owner.insert(owner, &owner_tokens);
             }
         }
 
         NftBurn {
-            owner_id: &owner,
+            owner_id: owner,
             token_ids: &[&token_id],
             memo: None,
             authorized_id: None, 

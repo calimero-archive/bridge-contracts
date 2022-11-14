@@ -137,7 +137,7 @@ impl CrossShardConnector {
 
     #[payable]
     pub fn cross_call_execute(&mut self, proof: FullOutcomeProof, height: u64) {
-        require!(!self.locker_account.is_none());
+        require!(self.locker_account.is_some());
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
                 == self.locker_account.as_ref().unwrap().to_string(),
@@ -146,7 +146,7 @@ impl CrossShardConnector {
         let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
         let parts: Vec<&str> = std::str::from_utf8(&event_log)
             .unwrap()
-            .split(":")
+            .split(':')
             .collect();
         require!(
             parts.len() == 8 && parts[0] == "CALIMERO_EVENT_CROSS_CALL",
@@ -156,7 +156,7 @@ impl CrossShardConnector {
         let destination_contract_method = parts[2];
         let destination_contract_args = base64::decode(parts[3]).unwrap();
         let destination_gas = Gas(parts[4].parse::<u64>().unwrap());
-        let destination_deposit = Balance::from(parts[5].parse::<u128>().unwrap());
+        let destination_deposit = parts[5].parse::<u128>().unwrap();
 
         let source_contract = parts[6];
         let source_contract_method = parts[7];
@@ -267,7 +267,7 @@ impl CrossShardConnector {
 
     #[payable]
     pub fn cross_call_receive_response(&mut self, proof: FullOutcomeProof, height: u64) {
-        require!(!self.locker_account.is_none());
+        require!(self.locker_account.is_some());
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
                 == self.locker_account.as_ref().unwrap().to_string(),
@@ -276,7 +276,7 @@ impl CrossShardConnector {
         let event_log = proof.outcome_proof.outcome_with_id.outcome.logs[0].clone();
         let parts: Vec<&str> = std::str::from_utf8(&event_log)
             .unwrap()
-            .split(":")
+            .split(':')
             .collect();
         require!(
             parts.len() == 5 && parts[0] == "CALIMERO_EVENT_CROSS_RESPONSE",

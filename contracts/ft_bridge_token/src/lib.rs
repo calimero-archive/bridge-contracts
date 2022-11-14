@@ -66,12 +66,27 @@ impl BridgeToken {
         // Only owner can change the metadata
         assert!(self.controller_or_self());
 
-        name.map(|name| self.name = name);
-        symbol.map(|symbol| self.symbol = symbol);
-        reference.map(|reference| self.reference = reference);
-        reference_hash.map(|reference_hash| self.reference_hash = reference_hash);
-        decimals.map(|decimals| self.decimals = decimals);
-        icon.map(|icon| self.icon = Some(icon));
+        if let Some(name) = name {
+            self.name = name
+        }
+
+        if let Some(symbol) = symbol {
+            self.symbol = symbol
+        }
+
+        if let Some(reference) = reference {
+            self.reference = reference
+        }
+
+        if let Some(reference_hash) = reference_hash {
+            self.reference_hash = reference_hash
+        }
+
+        if let Some(decimals) = decimals {
+            self.decimals = decimals
+        }
+
+        self.icon = icon
     }
 
     #[payable]

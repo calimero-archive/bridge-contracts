@@ -246,7 +246,7 @@ impl Hashable for ExecutionOutcomeWithId {
             bytes.extend(&hash);
         }
 
-        return env::sha256(&bytes).try_into().unwrap();
+        env::sha256(&bytes).try_into().unwrap()
     }
 }
 
@@ -276,13 +276,12 @@ impl ExecutionOutcome {
         bytes.extend(&swap_bytes16(self.tokens_burnt).to_be_bytes());
         bytes.extend(&self.executor_id.try_to_vec().expect("Failed to serialize"));
         bytes.extend(&self.status.try_to_vec().expect("Failed to serialize"));
-        let mut res: Vec<Hash> = Vec::new();
-        res.push(env::sha256(&bytes).try_into().unwrap());
+        let mut res: Vec<Hash> = vec![env::sha256(&bytes).try_into().unwrap()];
         for log in &self.logs {
-            res.push(env::sha256(&log).try_into().unwrap());
+            res.push(env::sha256(log).try_into().unwrap());
         }
 
-        return res;
+        res
     }
 }
 
