@@ -158,6 +158,8 @@ impl CrossShardConnector {
         let destination_gas = Gas(parts[4].parse::<u64>().unwrap());
         let destination_deposit = parts[5].parse::<u128>().unwrap();
 
+        require!(destination_deposit == 0, "Cross Shard Method called can not currently be payable");
+
         let source_contract = parts[6];
         let source_contract_method = parts[7];
 
