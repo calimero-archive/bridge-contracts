@@ -12,8 +12,8 @@ mod connector {
         use workspaces::{network::Sandbox, Contract, Worker, Account};
         use workspaces::result::CallExecutionDetails;
 
-        const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1661337044068-74633164378532";
-        const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922485";
+        const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1668507284663-45605813374523";
+        const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922487";
 
         async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
@@ -81,7 +81,7 @@ mod connector {
             connector_contract
                 .call(&worker, "set_locker")
                 .args_json(json!({
-                "locker_account": "ftdc.n.calimero.testnet",
+                "locker_account": "ft_connector.m.calimero.testnet",
             }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
@@ -96,8 +96,8 @@ mod connector {
                 "total_supply": "1000000000000000", 
                 "metadata": {
                     "spec": "ft-1.0.0",
-                    "name": "Example Token Name",
-                    "symbol": "EXMPL",
+                    "name": "Mercep test token",
+                    "symbol": "MERO",
                     "decimals": 8
                 }
             }))
@@ -185,7 +185,7 @@ mod connector {
 
         // checks for deploy ft proof and maps the ft contracts on source connector
         async fn register_ft(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, _fungible_token: &Contract) -> CallExecutionDetails {
-            let expected_block_merkle_root: Hash = decode_hex("5d4288c3a6ec76235b7475df26908882ac1d0a5e6573b405b8e11e2f23729fa4").try_into().unwrap();
+            let expected_block_merkle_root: Hash = decode_hex("07b980b31eecbf13db1577b0b02e5186c1bf79ae810c9b7b9eb02dd5dadbeea0").try_into().unwrap();
             prover
                 .call(&worker, "add_approved_hash")
                 .args_json(json!({
@@ -225,7 +225,7 @@ mod connector {
 
         // if provided with burn proof unlocks the fts
         async fn unlock_ft(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, _fungible_token: &Contract, burn_proof: &FullOutcomeProof) -> CallExecutionDetails {
-            let block_merkle_root: &str = "07eaa6707866030c2000234d49da3e911a3ccb943515144f00a16c3f5b3740a9";
+            let block_merkle_root: &str = "8be9635220956786962fbf23facd8e6a55e640bb75a94106956396145e9f12b7";
             let expected_block_merkle_root: Hash = decode_hex(block_merkle_root).try_into().unwrap();
             prover
                 .call(&worker, "add_approved_hash")
@@ -257,7 +257,7 @@ mod connector {
             let event_json: serde_json::Value = serde_json::from_str(unlock_execution_result.logs()[1].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
             assert!(event_json["event"] == "ft_transfer");
             assert!(event_json["standard"] == "nep141");
-            assert!(event_json["data"][0]["amount"] == "345");
+            assert!(event_json["data"][0]["amount"] == "23");
             assert!(event_json["data"][0]["new_owner_id"] == ALICE_ACCOUNT_ID);
             assert!(event_json["data"][0]["old_owner_id"] == connector.id().to_string());
 
@@ -294,7 +294,7 @@ mod connector {
                     })).unwrap())
                 .await.unwrap()
                 .json().unwrap();
-            assert!(balance_after_unlock == "76000");
+            assert!(balance_after_unlock == "75678");
 
             burn_proof.clone()
         }
@@ -318,7 +318,7 @@ mod connector {
             // verify lock event happened, this event is emitted from the ft_connector contract
             let parts: Vec<&str> = lock_execution_details.logs()[1].split(":").collect();
             assert!(parts.len() == 4);
-            assert!(parts[0] == "CALIMERO_EVENT_LOCK");
+            assert!(parts[0] == "CALIMERO_EVENT_LOCK_FT");
             assert!(parts[1] == fungible_token.id().to_string());
             assert!(parts[2] == ALICE_ACCOUNT_ID);
             assert!(parts[3] == "12345");
@@ -406,7 +406,7 @@ mod connector {
             // verify lock event passed, this event is emitted from the ft_connector contract
             let parts: Vec<&str> = second_lock_result.logs()[1].split(":").collect();
             assert!(parts.len() == 4);
-            assert!(parts[0] == "CALIMERO_EVENT_LOCK");
+            assert!(parts[0] == "CALIMERO_EVENT_LOCK_FT");
             assert!(parts[1] == fungible_token.id().to_string());
             assert!(parts[2] == ALICE_ACCOUNT_ID);
             assert!(parts[3] == "12345");

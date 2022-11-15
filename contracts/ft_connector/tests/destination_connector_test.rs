@@ -11,8 +11,8 @@ mod connector {
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
 
-        const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1661337044068-74633164378532";
-        const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922485";
+        const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1668507284663-45605813374523";
+        const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922487";
 
         async fn init() -> (Worker<Sandbox>, Contract, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
@@ -173,10 +173,10 @@ mod connector {
             transfer_ft(
                 "lock_",
                 99152413,
-                decode_hex("4bc8e71f81444a63a7be8044b18a50d6e3b4120ff3de1fe45dc4acb2f38d2427")
+                decode_hex("87003fd9547f2689ed698e30abc91b8bae5952699b678ecf9a035cf75095e160")
                     .try_into()
                     .unwrap(),
-                "ft_source_connector.n.apptest-development.testnet".to_string(),
+                "ft_connector.m.dev.calimero.testnet".to_string(),
             ).await
         }
 
@@ -219,7 +219,7 @@ mod connector {
                 .await.unwrap()
                 .json().unwrap();
 
-            assert!(balance_after_mint == "12345");
+            assert!(balance_after_mint == "123");
 
             // create the account where the newly minted tokens are, so we can withdraw some amount
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_2");
@@ -234,7 +234,7 @@ mod connector {
                     "withdraw",
                 )
                     .args_json(json!({
-                        "amount": "345"
+                        "amount": "23"
                     }))
                     .unwrap()
                     .gas(parse_gas!("300 Tgas") as u64)
@@ -249,10 +249,10 @@ mod connector {
             // verify burn event happened, this event is emitted from the ft_connector contract
             let parts: Vec<&str> = logs_from_withdraw[0].split(":").collect();
             assert!(parts.len() == 4);
-            assert!(parts[0] == "CALIMERO_EVENT_BURN");
+            assert!(parts[0] == "CALIMERO_EVENT_BURN_FT");
             assert!(parts[1] == bridged_ft_contract_id_str);
             assert!(parts[2] == alice_account.id().to_string());
-            assert!(parts[3] == "345");
+            assert!(parts[3] == "23");
 
             let balance_after_burn: String = worker.view(
                 bridged_ft_contract_id,
@@ -263,7 +263,7 @@ mod connector {
                 .await.unwrap()
                 .json().unwrap();
 
-            assert!(balance_after_burn == "12000");
+            assert!(balance_after_burn == "100");
         }
     }
 }
