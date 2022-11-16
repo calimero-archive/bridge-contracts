@@ -1,7 +1,7 @@
 extern crate near_sdk;
 
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, near_bindgen, PanicOnDefault};
+use near_sdk::{near_bindgen, PanicOnDefault};
 use std::collections::HashMap;
 use utils::Hash;
 

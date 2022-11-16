@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod light_client {
     mod test {
-        use light_client::LightClient;
+        use admin_controlled::AdminControlled;
+        use light_client::{LightClient, PAUSE_ADD_BLOCK_HEADER};
         use near_sdk::test_utils::{accounts, VMContextBuilder};
         use near_sdk::{testing_env, AccountId};
         use test_utils::file_as_json;
@@ -175,6 +176,36 @@ mod light_client {
 
                 assert!(true)
             }
+        }
+
+        #[test]
+        #[should_panic(expected = "paused")]
+        fn test_panic_on_add_light_client_block_paused() {
+            let mut bridge = init(None);
+            // Get "initial validators" that will produce block 304
+            let block244 = file_as_json::<Block>("244.json").unwrap();
+            let initial_validators = block244.next_bps.unwrap();
+
+            let block304 = file_as_json::<Block>("304.json").unwrap();
+            let block308 = file_as_json::<Block>("308.json").unwrap();
+
+            let context_244 =
+                get_context(accounts(0), 244 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 244);
+            testing_env!(context_244.build());
+            bridge.init_with_validators(initial_validators);
+
+            let context_304 =
+                get_context(accounts(0), 304 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 304);
+            testing_env!(context_304.build());
+            bridge.init_with_block(block304);
+
+            bridge.set_paused(PAUSE_ADD_BLOCK_HEADER);
+
+            // switch context to accounts(1) which is not the admin account, and let that account try to add a block
+            let context_308 =
+                get_context(accounts(1), 308 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 308);
+            testing_env!(context_308.build());
+            bridge.add_light_client_block(block308);
         }
     }
 }

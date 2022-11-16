@@ -20,7 +20,7 @@ macro_rules! impl_deployer_aware {
             #[payable]
             fn deploy_bridge_token(&mut self, source_address: String) {
                 near_sdk::assert_self();
-                self.assert_not_paused(PAUSE_DEPLOY_TOKEN);
+                self.assert_not_paused_flags(PAUSE_DEPLOY_TOKEN);
 
                 let initial_storage = env::storage_usage();
                 // TODO calculate future storage usage
@@ -265,7 +265,7 @@ macro_rules! impl_token_mint {
             /// Used when receiving Token from other network
             #[payable]
             fn mint(&mut self, proof: FullOutcomeProof, height: u64) {
-                self.assert_not_paused(PAUSE_DEPOSIT);
+                self.assert_not_paused(PAUSE_MINT);
                 require!(self.locker_account.is_some());
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id

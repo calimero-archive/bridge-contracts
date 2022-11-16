@@ -45,7 +45,7 @@ pub struct LightClient {
     blocks_to_keep: usize,
 }
 
-const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
+pub const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
 
 #[near_bindgen]
 impl LightClient {

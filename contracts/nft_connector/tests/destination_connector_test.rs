@@ -205,7 +205,7 @@ mod connector {
         }
 
         #[tokio::test]
-        #[should_panic]
+        #[should_panic(expected = "Event cannot be reused for depositing")]
         async fn test_proof_reuse_panics() {
             let (worker, prover, connector, proof) = mint_case1().await;
             reuse_proof(worker, prover, connector, proof, 99152413).await
