@@ -12,6 +12,7 @@ mod connector {
         use types::{FullOutcomeProof};
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
+        use xsc_connector::PAUSE_CROSS_CALL;
 
         const TIC_TAC_TOE_ACCOUNT_90: &str = "dev-1666269241011-86059863198522";
         const TIC_TAC_TOE_ACCOUNT_REL42: &str = "dev-1668382397562-28997434477113";
@@ -216,7 +217,7 @@ mod connector {
         }
 
         #[tokio::test]
-        #[should_panic]
+        #[should_panic(expected = "Event cannot be reused for depositing")]
         async fn test_proof_reuse_panics() {
             let (worker, prover, connector, tic_tac_toe_contract, _connector_permissions) = init(TIC_TAC_TOE_ACCOUNT_REL42, LOCKER_ACCOUNT_REL42).await;
             let cross_call_receive_response_proof = &file_as_json::<FullOutcomeProof>("test_assets/cross_call_receive_response_proof.json").unwrap();
@@ -317,6 +318,47 @@ mod connector {
             assert!(parts[5] == "0");
             assert!(parts[6] == ALICE_ACCOUNT_ID);
             assert!(parts[7] == "game_started");
+        }
+
+        #[tokio::test]
+        #[should_panic(expected = "paused")]
+        async fn test_should_panic_cross_call_paused() {
+            let (worker, _prover, connector, _tic_tac_toe_contract, _connector_permissions) = init(TIC_TAC_TOE_ACCOUNT_90, LOCKER_ACCOUNT_90).await;
+
+            connector
+                .call(&worker, "set_paused")
+                .args_json(json!({
+                "paused": PAUSE_CROSS_CALL,
+            }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+
+            const ALICE_ACCOUNT_ID: &str= "dev-1000000000001-10000000000001";
+
+            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_alice");
+            let tla = workspaces::AccountId::try_from(ALICE_ACCOUNT_ID.to_string()).unwrap();
+            let alice_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
+
+            // calling while paused should panic
+            alice_account
+                .call(&worker, connector.id(), "cross_call")
+                .args_json(json!({
+                    "destination_contract_id": TIC_TAC_TOE_ACCOUNT_90,
+                    "destination_contract_method": "start_game",
+                    "destination_contract_args": json!({"player_a":"player_a.testnet","player_b":"player_b.testnet"}).to_string(),
+                    "destination_gas": Gas(20_000_000_000_000),
+                    "destination_deposit": 0,
+                    "source_callback_method": "game_started"
+                 }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+
         }
     }
 }

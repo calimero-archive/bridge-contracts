@@ -49,8 +49,9 @@ const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
 /// Gas to call can_bridge on permissions manager
 const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
-const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
-const PAUSE_DEPOSIT: Mask = 1 << 1;
+pub const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
+pub const PAUSE_MINT: Mask = 1 << 1;
+pub const PAUSE_LOCK: Mask = 1 << 2;
 
 connector_base::impl_deployer_aware!(NonFungibleTokenConnector, "CALIMERO_EVENT_DEPLOY_NFT");
 connector_base::impl_other_network_aware!(NonFungibleTokenConnector);
@@ -84,6 +85,8 @@ impl NonFungibleTokenConnector {
             NO_DEPOSIT,
             env::prepaid_gas() / 3,
         );
+
+        self.assert_not_paused(PAUSE_LOCK);
 
         env::promise_return(env::promise_then(
             promise_nft_token,

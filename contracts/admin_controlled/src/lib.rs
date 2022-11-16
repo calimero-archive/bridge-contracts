@@ -3,9 +3,7 @@ pub use macros::*;
 
 use near_sdk::env;
 
-// TODO: check if the mask is really needed or we just pause one event. 
-// If not replace with an bool.
-pub type Mask = u128;
+pub type Mask = u64;
 
 pub trait AdminControlled {
     fn is_owner(&self) -> bool {
@@ -25,7 +23,13 @@ pub trait AdminControlled {
         (self.get_paused() & flag) != 0 && !self.is_owner()
     }
 
+    /// Asserts if the contract is paused for the current flag and user
     fn assert_not_paused(&self, flag: Mask) {
         assert!(!self.is_paused(flag));
+    }
+
+    /// Asserts if the contract is paused for the current flag
+    fn assert_not_paused_flags(&self, flag: Mask) {
+        assert!((self.get_paused() & flag) == 0);
     }
 }

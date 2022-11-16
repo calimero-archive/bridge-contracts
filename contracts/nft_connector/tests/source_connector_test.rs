@@ -335,7 +335,7 @@ mod connector {
         }
 
         #[tokio::test]
-        #[should_panic]
+        #[should_panic(expected = "Event cannot be reused for depositing")]
         async fn test_proof_reuse_panics() {
             let (worker, prover, connector, non_fungible_token, _connector_permissions) = init().await;
             let used_proof = lock_and_unlock_should_all_pass(&worker, &prover, &connector, &non_fungible_token).await;

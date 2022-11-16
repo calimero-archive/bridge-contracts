@@ -6,10 +6,11 @@ mod connector {
         use near_units::{parse_gas, parse_near};
         use test_utils::file_as_json;
         use utils::hashes::decode_hex;
-        use utils::Hash;
         use types::FullOutcomeProof;
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
+        use workspaces::result::CallExecutionDetails;
+        use ft_connector::{PAUSE_DEPLOY_TOKEN, PAUSE_MINT};
 
         const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1668507284663-45605813374523";
         const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922487";
@@ -98,62 +99,6 @@ mod connector {
             (worker, prover_contract, connector_contract, deployer_contract)
         }
 
-        async fn transfer_ft(file_prefix: &str, block_height: u64, hash: Hash, locker_account: String) -> (Worker<Sandbox>, Contract, Contract, Contract, FullOutcomeProof) {
-            let (worker, prover, connector, deployer) = init().await;
-            prover
-                .call(&worker, "add_approved_hash")
-                .args_json(json!({
-                    "hash": hash,
-                }))
-                .unwrap()
-                .transact()
-                .await
-                .unwrap();
-
-            let proof = &file_as_json::<FullOutcomeProof>(&format!("destination_test_assets/{}{}", file_prefix, "proof.json")).unwrap();
-
-            connector
-                .call(&worker, "set_locker")
-                .args_json(json!({
-                    "locker_account": locker_account,
-                }))
-                .unwrap()
-                .gas(parse_gas!("300 Tgas") as u64)
-                .transact()
-                .await
-                .unwrap();
-
-
-            connector
-                .call(&worker, "deploy_bridge_token")
-                .args_json(json!({
-                    "source_address": FT_CONTRACT_ACCOUNT_ID,
-                }))
-                .unwrap()
-                .deposit(parse_near!("50N"))
-                .gas(parse_gas!("300 Tgas") as u64)
-                .transact()
-                .await
-                .unwrap();
-
-            let execution_details = connector
-                .call(&worker, "mint")
-                .args_json(json!({
-                    "proof": proof,
-                    "height": block_height,
-                }))
-                .unwrap()
-                .gas(parse_gas!("300 Tgas") as u64)
-                .deposit(parse_near!("25") as u128)
-                .transact()
-                .await
-                .unwrap();
-
-            assert!(execution_details.is_success(), "Not correct proof");
-
-            (worker, prover, connector, deployer, proof.clone())
-        }
-
         async fn reuse_proof(worker: Worker<Sandbox>, _prover: Contract, connector: Contract, _deployer: Contract, proof: FullOutcomeProof, block_height: u64) {
             let _reused_proof_execution_details = connector
                 .call(&worker, "mint")
@@ -169,33 +114,121 @@ mod connector {
                 .unwrap();
         }
 
-        async fn mint_case1() -> (Worker<Sandbox>, Contract, Contract, Contract, FullOutcomeProof) {
-            transfer_ft(
-                "lock_",
-                99152413,
-                decode_hex("87003fd9547f2689ed698e30abc91b8bae5952699b678ecf9a035cf75095e160")
-                    .try_into()
-                    .unwrap(),
-                "ft_connector.m.dev.calimero.testnet".to_string(),
-            ).await
+        async fn mint(worker: &Worker<Sandbox>, prover: &Contract, connector: &Contract, _deployer: &Contract) -> (CallExecutionDetails, CallExecutionDetails, FullOutcomeProof) {
+            prover
+                .call(&worker, "add_approved_hash")
+                .args_json(json!({
+                    "hash": decode_hex("87003fd9547f2689ed698e30abc91b8bae5952699b678ecf9a035cf75095e160"),
+                }))
+                .unwrap()
+                .transact()
+                .await
+                .unwrap();
+
+            let proof = &file_as_json::<FullOutcomeProof>("destination_test_assets/lock_proof.json").unwrap();
+
+            connector
+                .call(&worker, "set_locker")
+                .args_json(json!({
+                    "locker_account": "ft_connector.m.dev.calimero.testnet".to_string(),
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+
+
+            let deploy_token_execution_details = connector
+                .call(&worker, "deploy_bridge_token")
+                .args_json(json!({
+                    "source_address": FT_CONTRACT_ACCOUNT_ID,
+                }))
+                .unwrap()
+                .deposit(parse_near!("50N"))
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+            assert!(deploy_token_execution_details.is_success());
+
+            let random_account = worker.dev_create_account().await.unwrap();
+
+            // anyone can call mint that should pass provided with correct proof
+            let mint_execution_details = random_account.call(&worker, connector.id(), "mint")
+                .args_json(json!({
+                    "proof": proof,
+                    "height": 9999999, // not important in this test
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("25") as u128)
+                .transact()
+                .await
+                .unwrap();
+
+            assert!(mint_execution_details.is_success(), "Not correct proof");
+
+            (mint_execution_details, deploy_token_execution_details, proof.clone())
         }
 
         #[tokio::test]
         async fn test_mint_works() {
-            mint_case1().await;
+            let (worker, prover, connector, deployer) = init().await;
+            mint(&worker, &prover, &connector, &deployer).await;
         }
 
         #[tokio::test]
-        #[should_panic]
+        #[should_panic(expected = "paused")]
+        async fn test_mint_paused() {
+            let (worker, prover, connector, deployer) = init().await;
+
+            // pause minting on connector
+            connector
+                .call(&worker, "set_paused")
+                .args_json(json!({
+                "paused": PAUSE_MINT,
+            }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+            let (_mint_execution_details, _deploy_token_execution_details, _proof) = mint(&worker, &prover, &connector, &deployer).await;
+        }
+
+        #[tokio::test]
+        #[should_panic(expected = "paused")]
+        async fn test_deploy_bridge_token_paused() {
+            let (worker, prover, connector, deployer) = init().await;
+
+            // pause minting on connector
+            connector
+                .call(&worker, "set_paused")
+                .args_json(json!({
+                "paused": PAUSE_DEPLOY_TOKEN,
+            }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+            let (_mint_execution_details, _deploy_token_execution_details, _proof) = mint(&worker, &prover, &connector, &deployer).await;
+        }
+
+        #[tokio::test]
+        #[should_panic(expected = "Event cannot be reused for depositing")]
         async fn test_proof_reuse_panics() {
-            let (worker, prover, connector, deployer, proof) = mint_case1().await;
+            let (worker, prover, connector, deployer) = init().await;
+            let (_mint_execution_details, _deploy_token_execution_details, proof) = mint(&worker, &prover, &connector, &deployer).await;
             reuse_proof(worker, prover, connector, deployer, proof, 99152413).await
         }
 
 
         #[tokio::test]
         async fn test_withdraw() {
-            let (worker, _prover, connector, _deployer, _proof) = mint_case1().await;
+            let (worker, prover, connector, deployer) = init().await;
+            mint(&worker, &prover, &connector, &deployer).await;
 
             let bridged_ft_contract_id_str: String = worker
                 .view(connector.id(),

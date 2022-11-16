@@ -21,6 +21,8 @@ const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 /// Gas to call can_bridge on permissions manager
 const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
+pub const PAUSE_CROSS_CALL: Mask = 1 << 0;
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct CrossShardConnector {
@@ -73,6 +75,8 @@ impl CrossShardConnector {
         destination_deposit: Balance,
         source_callback_method: String,
     ) {
+        self.assert_not_paused(PAUSE_CROSS_CALL);
+
         let permission_promise = env::promise_create(
             self.connector_permissions_account.clone(),
             "can_make_cross_shard_call_for_contract",

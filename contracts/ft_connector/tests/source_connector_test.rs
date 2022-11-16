@@ -11,6 +11,7 @@ mod connector {
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker, Account};
         use workspaces::result::CallExecutionDetails;
+        use ft_connector::PAUSE_LOCK;
 
         const FT_CONTRACT_ACCOUNT_ID: &str = "dev-1668507284663-45605813374523";
         const ALICE_ACCOUNT_ID: &str = "dev-1656412997567-26565713922487";
@@ -331,13 +332,51 @@ mod connector {
         }
 
         #[tokio::test]
-        #[should_panic]
+        #[should_panic(expected = "Event cannot be reused for depositing")]
         async fn test_proof_reuse_panics() {
             let (worker, prover, connector, fungible_token, _connector_permissions) = init().await;
             let used_proof = lock_and_unlock_should_all_pass(&worker, &prover, &connector, &fungible_token).await;
 
             // should panic since reusing proof
             unlock_ft(&worker, &prover, &connector, &fungible_token, &used_proof).await;
+        }
+
+        #[tokio::test]
+        async fn test_on_lock_paused_should_refund() {
+            let (worker, prover, connector, fungible_token, _connector_permissions) = init().await;
+            let alice_account = create_and_fund_alice_account(&worker, &prover, &connector, &fungible_token).await;
+
+            // pause locking on connector
+            connector
+                .call(&worker, "set_paused")
+                .args_json(json!({
+                "paused": PAUSE_LOCK,
+            }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+
+            let lock_execution_details = lock_ft(&worker, &prover, &connector, &fungible_token, &alice_account).await;
+
+            assert!(lock_execution_details.logs().len() == 2);
+
+            let event_json: serde_json::Value = serde_json::from_str(lock_execution_details.logs()[0].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            println!("{}", event_json);
+            assert!(event_json["event"] == "ft_transfer");
+            assert!(event_json["standard"] == "nep141");
+            assert!(event_json["data"][0]["amount"] == "12345");
+            assert!(event_json["data"][0]["new_owner_id"] == connector.id().to_string());
+            assert!(event_json["data"][0]["old_owner_id"] == ALICE_ACCOUNT_ID);
+
+            let refund_event_json: serde_json::Value = serde_json::from_str(lock_execution_details.logs()[1].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
+            assert!(refund_event_json["event"] == "ft_transfer");
+            assert!(refund_event_json["standard"] == "nep141");
+            assert!(refund_event_json["data"][0]["amount"] == "12345");
+            assert!(refund_event_json["data"][0]["new_owner_id"] == ALICE_ACCOUNT_ID);
+            assert!(refund_event_json["data"][0]["old_owner_id"] == connector.id().to_string());
+            assert!(refund_event_json["data"][0]["memo"] == "refund");
         }
 
         #[tokio::test]
