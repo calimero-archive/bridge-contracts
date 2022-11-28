@@ -114,8 +114,6 @@ mod connector {
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_2");
             let tla = workspaces::AccountId::try_from(ALICE_ACCOUNT_ID.to_string()).unwrap();
             let alice_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
-            println!("ALICE ACCOUNT ID: {}", alice_account.id());
-            println!("SOURCE CONNECTOR ID: {}", connector.id());
 
             // register alice account with the FT contract
             alice_account.call(&worker, fungible_token.id(), "storage_deposit")
@@ -363,7 +361,7 @@ mod connector {
             assert!(lock_execution_details.logs().len() == 2);
 
             let event_json: serde_json::Value = serde_json::from_str(lock_execution_details.logs()[0].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
-            println!("{}", event_json);
+
             assert!(event_json["event"] == "ft_transfer");
             assert!(event_json["standard"] == "nep141");
             assert!(event_json["data"][0]["amount"] == "12345");
