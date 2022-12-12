@@ -53,20 +53,7 @@ mod connector_permissions {
             let tla = workspaces::AccountId::try_from(connector_str.to_string()).unwrap();
             let connector_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
 
-            let add_to_deny_list_result = connector_account.call(&worker, connector_permissions_contract.id(), "deny_bridge")
-                .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
-                    "connector_type": connector_type,
-                }))
-                .unwrap()
-                .gas(parse_gas!("300 Tgas") as u64)
-                .transact()
-                .await
-                .unwrap();
-
-            assert!(add_to_deny_list_result.is_success());
-
-            // Alice is denied, should return false
+            // Everyone is denied at the beginning, should return false
             let can_alice_bridge_result_1: bool = worker.view(
                 connector_permissions_contract.id(),
                 "can_bridge",
@@ -81,24 +68,9 @@ mod connector_permissions {
 
             assert_eq!(can_alice_bridge_result_1, false);
 
-            // Bob is not denied, should return true
-            let can_bob_bridge_result: bool = worker.view(
-                connector_permissions_contract.id(),
-                "can_bridge",
-                serde_json::to_vec(&serde_json::json!({
-                    "account_id": BOB_ACCOUNT_ID,
-                    "connector_type": connector_type,
-                })).unwrap())
-                .await
-                .unwrap()
-                .json()
-                .unwrap();
-
-            assert_eq!(can_bob_bridge_result, true);
-
-            let remove_from_deny_list_result = connector_account.call(&worker, connector_permissions_contract.id(), "allow_bridge")
+            let add_to_allow_regex_list = connector_account.call(&worker, connector_permissions_contract.id(), "add_allow_regex_rule")
                 .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
+                    "regex_rule": ALICE_ACCOUNT_ID,
                     "connector_type": connector_type,
                 }))
                 .unwrap()
@@ -107,7 +79,7 @@ mod connector_permissions {
                 .await
                 .unwrap();
 
-            assert!(remove_from_deny_list_result.is_success());
+            assert!(add_to_allow_regex_list.is_success());
 
             // Alice is no longer denied, should return true
             let can_alice_bridge_result_2: bool = worker.view(
@@ -123,6 +95,49 @@ mod connector_permissions {
                 .unwrap();
 
             assert_eq!(can_alice_bridge_result_2, true);
+
+            // Bob is still denied, should return false
+            let can_bob_bridge_result: bool = worker.view(
+                connector_permissions_contract.id(),
+                "can_bridge",
+                serde_json::to_vec(&serde_json::json!({
+                    "account_id": BOB_ACCOUNT_ID,
+                    "connector_type": connector_type,
+                })).unwrap())
+                .await
+                .unwrap()
+                .json()
+                .unwrap();
+
+            assert_eq!(can_bob_bridge_result, false);
+
+            let remove_from_allowed_regex_rule = connector_account.call(&worker, connector_permissions_contract.id(), "remove_allowed_regex_rule")
+                .args_json(json!({
+                    "regex_rule": ALICE_ACCOUNT_ID,
+                    "connector_type": connector_type,
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+
+            assert!(remove_from_allowed_regex_rule.is_success());
+
+            // Alice is denied again, should return false
+            let can_alice_bridge_result_3: bool = worker.view(
+                connector_permissions_contract.id(),
+                "can_bridge",
+                serde_json::to_vec(&serde_json::json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": connector_type,
+                })).unwrap())
+                .await
+                .unwrap()
+                .json()
+                .unwrap();
+
+            assert_eq!(can_alice_bridge_result_3, false);
         }
 
         #[tokio::test]
@@ -135,16 +150,16 @@ mod connector_permissions {
 
         #[tokio::test]
         #[should_panic]
-        async fn test_add_to_deny_list_by_non_connector_account() {
+        async fn test_add_allow_regex_rule_by_non_connector_account() {
             let (worker, connector_permissions_contract) = init().await;
 
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_alice");
             let tla = workspaces::AccountId::try_from(ALICE_ACCOUNT_ID.to_string()).unwrap();
             let alice_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
 
-            let result = alice_account.call(&worker, connector_permissions_contract.id(), "deny_bridge")
+            let result = alice_account.call(&worker, connector_permissions_contract.id(), "add_allow_regex_rule")
                 .args_json(json!({
-                    "account_id": alice_account.id(),
+                    "regex_rule": alice_account.id(),
                     "connector_type": ConnectorType::FT,
                 }))
                 .unwrap()
@@ -165,19 +180,20 @@ mod connector_permissions {
             let tla = workspaces::AccountId::try_from(XSC_CONNECTOR_ACCOUNT_ID.to_string()).unwrap();
             let xsc_connector_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
 
-            let add_to_deny_contract_list_result = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "deny_cross_shard_call_per_contract")
+            let add_allow_all_to_regex_list = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "add_allow_regex_rule")
                 .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
-                    "contract_id": "forbidden.for.alice.testnet",
+                    "regex_rule": ".*",
+                    "connector_type": ConnectorType::XSC,
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
                 .transact()
                 .await
                 .unwrap();
-            assert!(add_to_deny_contract_list_result.is_success());
 
-            let can_alice_call_contract_result: bool = worker.view(
+            assert!(add_allow_all_to_regex_list.is_success());
+
+            let can_alice_call_contract_result_1: bool = worker.view(
                 connector_permissions_contract.id(),
                 "can_make_cross_shard_call_for_contract",
                 serde_json::to_vec(&serde_json::json!({
@@ -188,7 +204,32 @@ mod connector_permissions {
                 .unwrap()
                 .json()
                 .unwrap();
-            assert_eq!(can_alice_call_contract_result, false);
+            assert_eq!(can_alice_call_contract_result_1, true);
+
+            let add_to_deny_contract_list_result = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "deny_cross_shard_call_per_contract")
+                .args_json(json!({
+                    "account_regex": ALICE_ACCOUNT_ID,
+                    "contract_regex": "forbidden\\.for\\.alice\\.testnet",
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+            assert!(add_to_deny_contract_list_result.is_success());
+
+            let can_alice_call_contract_result_2: bool = worker.view(
+                connector_permissions_contract.id(),
+                "can_make_cross_shard_call_for_contract",
+                serde_json::to_vec(&serde_json::json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "contract_id": "forbidden.for.alice.testnet",
+                })).unwrap())
+                .await
+                .unwrap()
+                .json()
+                .unwrap();
+            assert_eq!(can_alice_call_contract_result_2, false);
 
             let can_bob_call_contract_result: bool = worker.view(
                 connector_permissions_contract.id(),
@@ -203,10 +244,10 @@ mod connector_permissions {
                 .unwrap();
             assert_eq!(can_bob_call_contract_result, true);
 
-            let remove_from_deny_contract_list_result = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "allow_cross_shard_call_per_contract")
+            let remove_from_deny_contract_list_result = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "remove_denied_cross_shard_call_per_contract")
                 .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
-                    "contract_id": "forbidden.for.alice.testnet",
+                    "account_regex": ALICE_ACCOUNT_ID,
+                    "contract_regex": "forbidden\\.for\\.alice\\.testnet",
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
@@ -228,9 +269,9 @@ mod connector_permissions {
                 .unwrap();
             assert_eq!(can_alice_call_contract_result, true);
 
-            let add_to_deny_list_result = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "deny_bridge")
+            let remove_allowed_regex_rule_result = xsc_connector_account.call(&worker, connector_permissions_contract.id(), "remove_allowed_regex_rule")
                 .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
+                    "regex_rule": ".*",
                     "connector_type": ConnectorType::XSC,
                 }))
                 .unwrap()
@@ -238,7 +279,7 @@ mod connector_permissions {
                 .transact()
                 .await
                 .unwrap();
-            assert!(add_to_deny_list_result.is_success());
+            assert!(remove_allowed_regex_rule_result.is_success());
 
             // The call for specific contract should still return true if that account is denied for making any cross shard calls
             let can_alice_call_contract_result: bool = worker.view(

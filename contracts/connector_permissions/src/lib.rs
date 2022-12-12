@@ -1,7 +1,8 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
-use near_sdk::collections::LookupSet;
+use near_sdk::collections::UnorderedSet;
 use types::ConnectorType;
+use regex::Regex;
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -12,15 +13,15 @@ pub struct ConnectorPermissions {
     pub nft_connector_account: AccountId,
     /// The account of the cross shard connector
     pub xsc_connector_account: AccountId,
-    /// set of accounts denied for bridging fts
-    pub deny_listed_accounts_for_bridging_fts: LookupSet<AccountId>,
-    /// set of accounts denied for bridging nfts
-    pub deny_listed_accounts_for_bridging_nfts: LookupSet<AccountId>,
-    /// set of accounts denied for making cross shard calls
-    pub deny_listed_accounts_for_cross_shard_calls: LookupSet<AccountId>,
-    /// set of accounts denied for making cross shard calls per contract id, the data
-    /// in the set is in form {contract_id}|{account_id}
-    pub deny_listed_account_per_contract_for_cross_shard_calls: LookupSet<String>,
+    /// set of allowed regex rules for bridging fts
+    pub allow_regex_rules_for_bridging_fts: UnorderedSet<String>,
+    /// set of allowed regex rules for bridging nfts
+    pub allow_regex_rules_for_bridging_nfts: UnorderedSet<String>,
+    /// set of allowed regex rules for making cross shard calls
+    pub allow_regex_rules_for_cross_shard_calls: UnorderedSet<String>,
+    /// set of regex rules for accounts denied for making cross shard calls per contract id
+    /// defined by regex, the data in the set is in form (contract_rule_regex, account_rule_regex)
+    pub deny_regex_account_per_regex_contract_for_cross_shard_calls: UnorderedSet<(String, String)>,
 }
 
 #[near_bindgen]
@@ -37,10 +38,10 @@ impl ConnectorPermissions {
             ft_connector_account,
             nft_connector_account,
             xsc_connector_account,
-            deny_listed_accounts_for_bridging_fts: LookupSet::new(b"dft".to_vec()),
-            deny_listed_accounts_for_bridging_nfts: LookupSet::new(b"dnft".to_vec()),
-            deny_listed_accounts_for_cross_shard_calls: LookupSet::new(b"dxsc".to_vec()),
-            deny_listed_account_per_contract_for_cross_shard_calls: LookupSet::new(b"dxscc".to_vec()),
+            allow_regex_rules_for_bridging_fts: UnorderedSet::new(b"dft".to_vec()),
+            allow_regex_rules_for_bridging_nfts: UnorderedSet::new(b"dnft".to_vec()),
+            allow_regex_rules_for_cross_shard_calls: UnorderedSet::new(b"dxsc".to_vec()),
+            deny_regex_account_per_regex_contract_for_cross_shard_calls: UnorderedSet::new(b"dxscc".to_vec()),
         }
     }
 
@@ -52,69 +53,89 @@ impl ConnectorPermissions {
         }
     }
 
+    // returns true if account matches any of the regex rules defined within the set of rules
+    fn account_matches_rule(&self, account: &str, rules_set: &UnorderedSet<String>) -> bool {
+        for rule in rules_set.iter() {
+            let re = Regex::new(&rule).unwrap();
+            if re.is_match(account) {
+                return true;
+            }
+        }
+
+        false
+    }
+
     /// returns true if account_id is not denied per connector type
     pub fn can_bridge(&self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
         match connector_type {
-            ConnectorType::FT => !self.deny_listed_accounts_for_bridging_fts.contains(account_id),
-            ConnectorType::NFT => !self.deny_listed_accounts_for_bridging_nfts.contains(account_id),
-            ConnectorType::XSC => !self.deny_listed_accounts_for_cross_shard_calls.contains(account_id),
+            ConnectorType::FT => self.account_matches_rule(account_id.as_str(), &self.allow_regex_rules_for_bridging_fts),
+            ConnectorType::NFT => self.account_matches_rule(account_id.as_str(), &self.allow_regex_rules_for_bridging_nfts),
+            ConnectorType::XSC => self.account_matches_rule(account_id.as_str(), &self.allow_regex_rules_for_cross_shard_calls),
         }
     }
 
-    /// adds the account id to a denied list per connector type, can only be called by the corresponding connector
-    pub fn deny_bridge(&mut self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
+    // adds new regex rule to the list of regex rules per connector type, can only be called by the corresponding connector
+    pub fn add_allow_regex_rule(&mut self, regex_rule: &String, connector_type: ConnectorType) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             *self.connector_from_type(connector_type),
-            "Only corresponding connector can add accounts to the deny list"
+            "Only corresponding connector can add regex rules to the rule list"
         );
         match connector_type {
-            ConnectorType::FT => self.deny_listed_accounts_for_bridging_fts.insert(account_id),
-            ConnectorType::NFT => self.deny_listed_accounts_for_bridging_nfts.insert(account_id),
-            ConnectorType::XSC => self.deny_listed_accounts_for_cross_shard_calls.insert(account_id),
+            ConnectorType::FT => self.allow_regex_rules_for_bridging_fts.insert(regex_rule),
+            ConnectorType::NFT => self.allow_regex_rules_for_bridging_nfts.insert(regex_rule),
+            ConnectorType::XSC => self.allow_regex_rules_for_cross_shard_calls.insert(regex_rule),
         }
-
     }
 
-    /// removes the account id from the denied list per connector type, can only be called by the corresponding connector
-    pub fn allow_bridge(&mut self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
+    // removes regex rule from the list of regex rules per connector type, can only be called by the corresponding connector
+    pub fn remove_allowed_regex_rule(&mut self, regex_rule: &String, connector_type: ConnectorType) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             *self.connector_from_type(connector_type),
-            "Only corresponding connector can remove accounts from the deny list"
+            "Only corresponding connector can remove regex rules from the rule list"
         );
         match connector_type {
-            ConnectorType::FT => self.deny_listed_accounts_for_bridging_fts.remove(account_id),
-            ConnectorType::NFT => self.deny_listed_accounts_for_bridging_nfts.remove(account_id),
-            ConnectorType::XSC => self.deny_listed_accounts_for_cross_shard_calls.remove(account_id),
+            ConnectorType::FT => self.allow_regex_rules_for_bridging_fts.remove(regex_rule),
+            ConnectorType::NFT => self.allow_regex_rules_for_bridging_nfts.remove(regex_rule),
+            ConnectorType::XSC => self.allow_regex_rules_for_cross_shard_calls.remove(regex_rule),
         }
     }
 
-    /// adds the account_id|contract_id to a denied list, can only be called by cross shard calls connector contract
-    pub fn deny_cross_shard_call_per_contract(&mut self, account_id: AccountId, contract_id: AccountId) -> bool {
+    // adds the account regex rule and the contract regex rule to a denied list, can only be called by cross shard calls connector contract
+    pub fn deny_cross_shard_call_per_contract(&mut self, account_regex: &String, contract_regex: &String) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             self.xsc_connector_account,
-            "Only cross shard connector can add accounts to the deny list for specific contract id"
+            "Only cross shard connector can add accounts regex rules to the deny list for contract regex rule"
         );
-        self.deny_listed_account_per_contract_for_cross_shard_calls.insert(&format!("{}|{}", account_id, contract_id))
+        self.deny_regex_account_per_regex_contract_for_cross_shard_calls.insert(&(contract_regex.to_string(), account_regex.to_string()))
     }
 
-    /// removes the account_id|contract_id from the denied list, can only be called by cross shard calls connector contract
-    pub fn allow_cross_shard_call_per_contract(&mut self, account_id: AccountId, contract_id: AccountId) -> bool {
+    // removes the account regex rule and the contract regex rule from a denied list, can only be called by cross shard calls connector contract
+    pub fn remove_denied_cross_shard_call_per_contract(&mut self, account_regex: &String, contract_regex: &String) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             self.xsc_connector_account,
-            "Only cross shard connector can remove accounts from the deny list for specific contract id"
+            "Only cross shard connector can remove accounts regex rules from the deny list for contract regex rule"
         );
-        self.deny_listed_account_per_contract_for_cross_shard_calls.remove(&format!("{}|{}", account_id, contract_id))
+        self.deny_regex_account_per_regex_contract_for_cross_shard_calls.remove(&(contract_regex.to_string(), account_regex.to_string()))
     }
 
-    /// checks if account_id is denied to make cross shard contract calls and whether the account_id is denied from calling a specific contract id
+    // checks if account_id is denied to make cross shard contract calls and whether account_id and contract_id pair is denied by any of the regex rules
     pub fn can_make_cross_shard_call_for_contract(&self, account_id: &AccountId, contract_id: AccountId) -> bool {
         if !self.can_bridge(account_id, ConnectorType::XSC) {
             return false;
         }
-        !self.deny_listed_account_per_contract_for_cross_shard_calls.contains(&format!("{}|{}", account_id, contract_id))
+
+        for (contract_rule, account_rule) in self.deny_regex_account_per_regex_contract_for_cross_shard_calls.iter() {
+            let contract_regex = Regex::new(&contract_rule).unwrap();
+            let account_regex = Regex::new(&account_rule).unwrap();
+            if contract_regex.is_match(contract_id.as_str()) && account_regex.is_match(account_id.as_str()) {
+                return false;
+            }
+        }
+
+        true
     }
 }

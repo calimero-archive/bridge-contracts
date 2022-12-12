@@ -68,6 +68,18 @@ mod connector {
                 .await
                 .unwrap();
 
+            // allow anyone to bridge NFTs
+            connector_contract.as_account().call(&worker, connector_permissions_contract.id(), "add_allow_regex_rule").
+                args_json(json!({
+                    "regex_rule": ".*",
+                    "connector_type": ConnectorType::NFT,
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await
+                .unwrap();
+
             connector_contract
                 .call(&worker, "new")
                 .args_json(json!({
@@ -349,9 +361,9 @@ mod connector {
             let (worker, prover, connector, non_fungible_token, connector_permissions) = init().await;
 
             let deny_result = connector.as_account()
-                .call(&worker, connector_permissions.id(), "deny_bridge")
+                .call(&worker, connector_permissions.id(), "remove_allowed_regex_rule")
                 .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
+                    "regex_rule": ".*",
                     "connector_type": ConnectorType::NFT,
                  }))
                 .unwrap()
@@ -383,9 +395,9 @@ mod connector {
 
             // Allow Alice to use the nft_connector again
             let allow_result = connector.as_account()
-                .call(&worker, connector_permissions.id(), "allow_bridge")
+                .call(&worker, connector_permissions.id(), "add_allow_regex_rule")
                 .args_json(json!({
-                    "account_id": ALICE_ACCOUNT_ID,
+                    "regex_rule": ALICE_ACCOUNT_ID,
                     "connector_type": ConnectorType::NFT,
                  }))
                 .unwrap()
