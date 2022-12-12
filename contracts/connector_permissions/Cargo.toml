@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 utils = { path = "../utils" }
 types = { path = "../types" }
 near-sdk = "= 4.0.0"
+regex = "1"
 
 [dev-dependencies]
 workspaces = "0.4.1"
