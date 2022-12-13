@@ -69,12 +69,13 @@ impl Prover {
     pub fn merkle_root_callback(&self, block_header_lite_hash: Hash, block_proof: MerklePath) {
         near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
-        let computed_block_merkle_root = Prover::compute_root(&block_header_lite_hash, block_proof);
 
         let expected_block_merkle_root = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<Option<Hash>>(&x).unwrap(),
             _ => env::panic_str("Merkle root promise failed"),
         };
+
+        let computed_block_merkle_root = Prover::compute_root(&block_header_lite_hash, block_proof);
 
         require!(
             expected_block_merkle_root == Some(computed_block_merkle_root),
