@@ -138,6 +138,7 @@ macro_rules! impl_other_network_token_aware {
                 &mut self,
                 source_contract: AccountId,
                 destination_contract: AccountId,
+                proof: FullOutcomeProof,
             ) {
                 near_sdk::assert_self();
                 require!(env::promise_results_count() == 1);
@@ -150,10 +151,19 @@ macro_rules! impl_other_network_token_aware {
                 };
                 require!(verification_success, "Failed to verify the proof");
 
+                let remaining_deposit = self.record_proof(&proof);
+                let initial_storage = env::storage_usage() as u128;
                 self.contracts_mapping
                     .insert(&destination_contract, &source_contract);
+                let current_storage = env::storage_usage() as u128;
+                require!(
+                    remaining_deposit
+                        >= env::storage_byte_cost() * (current_storage - initial_storage),
+                    "Not enough attached deposit to complete mapping"
+                );
             }
 
+            #[payable]
             fn register_on_other(&mut self, proof: FullOutcomeProof, height: u64) {
                 require!(self.locker_account.is_some());
                 require!(
@@ -191,6 +201,7 @@ macro_rules! impl_other_network_token_aware {
                     &serde_json::to_vec(&(
                         token_contract_account_source,
                         token_contract_account_destination,
+                        proof,
                     ))
                     .unwrap(),
                     env::attached_deposit(),
