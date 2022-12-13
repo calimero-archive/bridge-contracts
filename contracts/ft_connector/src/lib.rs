@@ -68,7 +68,7 @@ connector_base::impl_token_unlock!(
 
 #[near_bindgen]
 impl FungibleTokenConnector {
-    /// Used to register connector to using FT that requires prior registration
+    /// Used to register a connector to use FT that requires prior registration
     /// ex. wrap.testnet
     #[payable]
     pub fn register_ft(&mut self, ft_address: AccountId, method: String) {
