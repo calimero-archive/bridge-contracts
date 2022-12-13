@@ -22,7 +22,12 @@ pub trait OtherNetworkTokenAware {
         proof_validity_ns: Option<u64>,
     ) -> Self;
     fn view_mapping(&self, source_account: AccountId) -> Option<AccountId>;
-    fn map_contracts(&mut self, source_contract: AccountId, destination_contract: AccountId);
+    fn map_contracts(
+        &mut self,
+        source_contract: AccountId,
+        destination_contract: AccountId,
+        proof: FullOutcomeProof,
+    );
     fn register_on_other(&mut self, proof: FullOutcomeProof, height: u64);
 }
 
