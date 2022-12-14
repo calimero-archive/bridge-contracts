@@ -68,7 +68,7 @@ connector_base::impl_token_unlock!(
 
 #[near_bindgen]
 impl FungibleTokenConnector {
-    /// Used to register a connector to use FT that requires prior registration
+    /// Used to register this connector to use an FT that requires prior registration
     /// ex. wrap.testnet
     #[payable]
     pub fn register_ft(&mut self, ft_address: AccountId) {
@@ -81,9 +81,8 @@ impl FungibleTokenConnector {
         ))
     }
 
-    /// Used when sending FT to other network
-    /// `msg` is expected to contain valid other network id
-    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) {
+    /// Emits a calimero lock event if transfer is successful
+    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, #[allow(unused_variables)] msg: String) {
         let permission_promise = env::promise_create(
             self.connector_permissions_account.clone(),
             "can_bridge",
@@ -98,7 +97,7 @@ impl FungibleTokenConnector {
             permission_promise,
             env::current_account_id(),
             "lock",
-            &serde_json::to_vec(&(sender_id, env::predecessor_account_id(), amount, msg)).unwrap(),
+            &serde_json::to_vec(&(sender_id, env::predecessor_account_id(), amount)).unwrap(),
             NO_DEPOSIT,
             PERMISSIONS_OUTCOME_GAS,
         ));
@@ -109,7 +108,6 @@ impl FungibleTokenConnector {
         sender_id: AccountId,
         ft_contract_id: AccountId,
         amount: U128,
-        _msg: String,
     ) {
         near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
