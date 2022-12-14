@@ -87,8 +87,8 @@ impl BridgeTokenDeployer {
         ));
     }
 
+    #[private]
     pub fn complete_deployment(&mut self, bridge_token_address: AccountId) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         match env::promise_result(0) {

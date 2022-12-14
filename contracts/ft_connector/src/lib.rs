@@ -103,13 +103,13 @@ impl FungibleTokenConnector {
         ));
     }
 
+    #[private]
     pub fn lock(
         &mut self,
         sender_id: AccountId,
         ft_contract_id: AccountId,
         amount: U128,
     ) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {

@@ -4,8 +4,8 @@ macro_rules! impl_deployer_aware {
         #[near_bindgen]
         impl DeployerAware for $contract {
             #[payable]
+            #[private]
             fn set_deployer(&mut self, deployer_account: AccountId) {
-                near_sdk::assert_self();
                 require!(self.deployer_account.is_none());
                 let initial_storage = env::storage_usage() as u128;
                 self.deployer_account = Some(deployer_account);
@@ -18,8 +18,8 @@ macro_rules! impl_deployer_aware {
             }
 
             #[payable]
+            #[private]
             fn deploy_bridge_token(&mut self, source_address: String) {
-                near_sdk::assert_self();
                 self.assert_not_paused_flags(PAUSE_DEPLOY_TOKEN);
 
                 let initial_storage = env::storage_usage();
@@ -50,8 +50,8 @@ macro_rules! impl_deployer_aware {
                 ));
             }
 
+            #[private]
             fn complete_deployment(&mut self, source_address: AccountId) {
-                near_sdk::assert_self();
                 require!(env::promise_results_count() == 1);
 
                 let bridge_token_address = match env::promise_result(0) {
@@ -134,13 +134,13 @@ macro_rules! impl_other_network_token_aware {
             }
 
             #[payable]
+            #[private]
             fn map_contracts(
                 &mut self,
                 source_contract: AccountId,
                 destination_contract: AccountId,
                 proof: FullOutcomeProof,
             ) {
-                near_sdk::assert_self();
                 require!(env::promise_results_count() == 1);
 
                 let verification_success = match env::promise_result(0) {
@@ -220,8 +220,8 @@ macro_rules! impl_other_network_aware {
         #[near_bindgen]
         impl OtherNetworkAware for $contract {
             #[payable]
+            #[private]
             fn set_locker(&mut self, locker_account: AccountId) {
-                near_sdk::assert_self();
                 require!(self.locker_account.is_none());
                 let initial_storage = env::storage_usage() as u128;
                 self.locker_account = Some(locker_account);
@@ -234,8 +234,8 @@ macro_rules! impl_other_network_aware {
             }
 
             /// Record proof if it is valid to make sure it is not re-used later for another deposit.
+            #[private]
             fn record_proof(&mut self, proof: &FullOutcomeProof) -> Balance {
-                near_sdk::assert_self();
                 let initial_storage = env::storage_usage();
 
                 require!(
@@ -323,6 +323,7 @@ macro_rules! impl_token_mint {
             /// Finish depositing once the proof was successfully validated. Can only be called by the contract
             /// itself.
             #[payable]
+            #[private]
             fn finish_mint(
                 &mut self,
                 caller_id: AccountId,
@@ -330,7 +331,6 @@ macro_rules! impl_token_mint {
                 params: Vec<String>,
                 proof: FullOutcomeProof,
             ) {
-                near_sdk::assert_self();
                 require!(env::promise_results_count() == 1);
 
                 let verification_success = match env::promise_result(0) {
@@ -444,6 +444,7 @@ macro_rules! impl_token_unlock {
             /// Finish depositing once the proof was successfully validated. Can only be called by the contract
             /// itself.
             #[payable]
+            #[private]
             fn finish_unlock(
                 &mut self,
                 caller_id: AccountId,
@@ -452,7 +453,6 @@ macro_rules! impl_token_unlock {
                 transferable: $transferable,
                 proof: FullOutcomeProof,
             ) {
-                near_sdk::assert_self();
                 require!(env::promise_results_count() == 1);
 
                 let verification_success = match env::promise_result(0) {

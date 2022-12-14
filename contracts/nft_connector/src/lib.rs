@@ -105,6 +105,7 @@ impl NonFungibleTokenConnector {
         ));
     }
 
+    #[private]
     pub fn lock(
         &mut self,
         token_account: String,
@@ -113,7 +114,6 @@ impl NonFungibleTokenConnector {
         token_id: String,
         msg: String,
     ) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let promise_result = match env::promise_result(0) {
@@ -167,6 +167,7 @@ impl NonFungibleTokenConnector {
         ));
     }
 
+    #[private]
     pub fn lock_with_metadata(
         &mut self,
         token_account: String,
@@ -176,7 +177,6 @@ impl NonFungibleTokenConnector {
         _msg: String,
         metadata: Option<TokenMetadata>,
     ) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let can_bridge_promise_result = match env::promise_result(0) {

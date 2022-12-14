@@ -105,6 +105,7 @@ impl CrossShardConnector {
         ));
     }
 
+    #[private]
     pub fn cross_call_resolve(
         &mut self,
         destination_contract_id: String,
@@ -115,7 +116,6 @@ impl CrossShardConnector {
         source_callback_method: String,
         cross_call_initiator_account_id: String,
     ) -> bool {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
@@ -199,6 +199,7 @@ impl CrossShardConnector {
     }
 
     #[payable]
+    #[private]
     pub fn finish_cross_call_execute(
         &mut self,
         caller_id: AccountId,
@@ -211,7 +212,6 @@ impl CrossShardConnector {
         source_contract_method: String,
         proof: FullOutcomeProof,
     ) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
@@ -251,13 +251,13 @@ impl CrossShardConnector {
         env::promise_return(calimero_response_promise);
     }
 
+    #[private]
     pub fn calimero_response(
         &mut self,
         source_contract: AccountId,
         source_contract_method: String,
         destination_contract: AccountId,
     ) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let execution_result = match env::promise_result(0) {
@@ -322,6 +322,7 @@ impl CrossShardConnector {
     }
 
     #[payable]
+    #[private]
     pub fn finish_cross_response(
         &mut self,
         caller_id: AccountId,
@@ -331,7 +332,6 @@ impl CrossShardConnector {
         response: String,
         proof: FullOutcomeProof,
     ) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
