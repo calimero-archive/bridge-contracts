@@ -18,8 +18,8 @@ pub struct BridgeToken {
     token: FungibleToken,
     name: String,
     symbol: String,
-    reference: String,
-    reference_hash: Base64VecU8,
+    reference: Option<String>,
+    reference_hash: Option<Base64VecU8>,
     decimals: u8,
     paused: Mask,
     icon: Option<String>,
@@ -45,8 +45,8 @@ impl BridgeToken {
             token: FungibleToken::new(b"t".to_vec()),
             name: String::default(),
             symbol: String::default(),
-            reference: String::default(),
-            reference_hash: Base64VecU8(vec![]),
+            reference: None,
+            reference_hash: None,
             decimals: 0,
             paused: Mask::default(),
             icon: None,
@@ -56,37 +56,22 @@ impl BridgeToken {
     // TODO see if this needs to be secured to only call it once
     pub fn set_metadata(
         &mut self,
-        name: Option<String>,
-        symbol: Option<String>,
+        name: String,
+        symbol: String,
         reference: Option<String>,
         reference_hash: Option<Base64VecU8>,
-        decimals: Option<u8>,
+        decimals: u8,
         icon: Option<String>,
     ) {
         // Only owner can change the metadata
         assert!(self.controller_or_self());
 
-        if let Some(name) = name {
-            self.name = name
-        }
-
-        if let Some(symbol) = symbol {
-            self.symbol = symbol
-        }
-
-        if let Some(reference) = reference {
-            self.reference = reference
-        }
-
-        if let Some(reference_hash) = reference_hash {
-            self.reference_hash = reference_hash
-        }
-
-        if let Some(decimals) = decimals {
-            self.decimals = decimals
-        }
-
-        self.icon = icon
+        self.name = name;
+        self.symbol = symbol;
+        self.reference = reference;
+        self.reference_hash = reference_hash;
+        self.decimals = decimals;
+        self.icon = icon;
     }
 
     #[payable]
@@ -147,8 +132,8 @@ impl FungibleTokenMetadataProvider for BridgeToken {
             name: self.name.clone(),
             symbol: self.symbol.clone(),
             icon: self.icon.clone(),
-            reference: Some(self.reference.clone()),
-            reference_hash: Some(self.reference_hash.clone()),
+            reference: self.reference.clone(),
+            reference_hash: self.reference_hash.clone(),
             decimals: self.decimals,
         }
     }

@@ -18,8 +18,8 @@ pub struct BridgeToken {
     token: NonFungibleToken,
     name: String,
     symbol: String,
-    reference: String,
-    reference_hash: Base64VecU8,
+    reference: Option<String>,
+    reference_hash: Option<Base64VecU8>,
     base_uri: Option<String>,
     paused: Mask,
     icon: Option<String>,
@@ -51,8 +51,8 @@ impl BridgeToken {
             ),
             name: String::default(),
             symbol: String::default(),
-            reference: String::default(),
-            reference_hash: Base64VecU8(vec![]),
+            reference: None,
+            reference_hash: None,
             base_uri: None,
             paused: Mask::default(),
             icon: None,
@@ -62,8 +62,8 @@ impl BridgeToken {
     // TODO see if this needs to be secured to only call it once
     pub fn set_metadata(
         &mut self,
-        name: Option<String>,
-        symbol: Option<String>,
+        name: String,
+        symbol: String,
         reference: Option<String>,
         reference_hash: Option<Base64VecU8>,
         icon: Option<String>,
@@ -72,24 +72,11 @@ impl BridgeToken {
         // Only owner can change the metadata
         assert!(self.controller_or_self());
 
-        if let Some(name) = name {
-            self.name = name
-        }
-
-        if let Some(symbol) = symbol {
-            self.symbol = symbol
-        }
-
-        if let Some(reference) = reference {
-            self.reference = reference
-        }
-
-        if let Some(reference_hash) = reference_hash {
-            self.reference_hash = reference_hash
-        }
-
+        self.name = name;
+        self.symbol = symbol;
+        self.reference = reference;
+        self.reference_hash = reference_hash;
         self.icon = icon;
-
         self.base_uri = base_uri;
     }
 
@@ -171,8 +158,8 @@ impl NonFungibleTokenMetadataProvider for BridgeToken {
             name: self.name.clone(),
             symbol: self.symbol.clone(),
             icon: self.icon.clone(),
-            reference: Some(self.reference.clone()),
-            reference_hash: Some(self.reference_hash.clone()),
+            reference: self.reference.clone(),
+            reference_hash: self.reference_hash.clone(),
             base_uri: self.base_uri.clone(),
         }
     }
