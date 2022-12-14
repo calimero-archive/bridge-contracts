@@ -58,7 +58,7 @@ macro_rules! impl_deployer_aware {
                     PromiseResult::Successful(x) => {
                         serde_json::from_slice::<Vec<AccountId>>(&x).unwrap()[0].clone()
                     }
-                    _ => env::panic_str("Deploy failed1"),
+                    _ => env::panic_str("Deploy bridge token failed"),
                 };
 
                 env::log_str(&format!(
