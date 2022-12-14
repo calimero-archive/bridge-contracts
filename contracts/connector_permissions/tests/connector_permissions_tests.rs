@@ -3,7 +3,7 @@ mod connector_permissions {
     mod test {
         use near_sdk::serde_json;
         use near_sdk::serde_json::json;
-        use near_units::parse_gas;
+        use near_units::{parse_gas, parse_near};
         use workspaces::prelude::*;
         use workspaces::{network::Sandbox, Contract, Worker};
         use types::ConnectorType;
@@ -75,6 +75,7 @@ mod connector_permissions {
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
                 .transact()
                 .await
                 .unwrap();
@@ -164,6 +165,30 @@ mod connector_permissions {
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
+                .transact()
+                .await
+                .unwrap();
+
+            assert!(!result.is_success());
+        }
+
+        #[tokio::test]
+        #[should_panic(expected = "Not enough attached deposit to complete action")]
+        async fn test_add_allow_regex_no_deposit() {
+            let (worker, connector_permissions_contract) = init().await;
+
+            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, format!("secret_key_ft_connector_{}", FT_CONNECTOR_ACCOUNT_ID).as_str());
+            let tla = workspaces::AccountId::try_from(FT_CONNECTOR_ACCOUNT_ID.to_string()).unwrap();
+            let connector_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
+
+            let result = connector_account.call(&worker, connector_permissions_contract.id(), "add_allow_regex_rule")
+                .args_json(json!({
+                    "regex_rule": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::FT,
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
                 .transact()
                 .await
                 .unwrap();
@@ -187,6 +212,7 @@ mod connector_permissions {
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
                 .transact()
                 .await
                 .unwrap();
@@ -213,6 +239,7 @@ mod connector_permissions {
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
                 .transact()
                 .await
                 .unwrap();

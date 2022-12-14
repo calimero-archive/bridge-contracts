@@ -82,6 +82,7 @@ mod connector {
                 }))
                 .unwrap()
                 .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
                 .transact()
                 .await
                 .unwrap();
@@ -288,6 +289,8 @@ mod connector {
                     "connector_type": ConnectorType::XSC,
                  }))
                 .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
                 .transact()
                 .await
                 .unwrap();
