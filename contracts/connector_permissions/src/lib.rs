@@ -1,8 +1,8 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
 use near_sdk::collections::UnorderedSet;
-use types::ConnectorType;
+use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
 use regex::Regex;
+use types::ConnectorType;
 
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
@@ -26,7 +26,6 @@ pub struct ConnectorPermissions {
 
 #[near_bindgen]
 impl ConnectorPermissions {
-
     #[init]
     pub fn new(
         ft_connector_account: AccountId,
@@ -41,8 +40,18 @@ impl ConnectorPermissions {
             allow_regex_rules_for_bridging_fts: UnorderedSet::new(b"dft".to_vec()),
             allow_regex_rules_for_bridging_nfts: UnorderedSet::new(b"dnft".to_vec()),
             allow_regex_rules_for_cross_shard_calls: UnorderedSet::new(b"dxsc".to_vec()),
-            deny_regex_account_per_regex_contract_for_cross_shard_calls: UnorderedSet::new(b"dxscc".to_vec()),
+            deny_regex_account_per_regex_contract_for_cross_shard_calls: UnorderedSet::new(
+                b"dxscc".to_vec(),
+            ),
         }
+    }
+
+    fn require_enough_deposit(&self, current_storage: u128, initial_storage: u128) {
+        require!(
+            env::attached_deposit()
+                >= env::storage_byte_cost() * (current_storage - initial_storage),
+            "Not enough attached deposit to complete action"
+        );
     }
 
     fn connector_from_type(&self, connector_type: ConnectorType) -> &AccountId {
@@ -68,28 +77,55 @@ impl ConnectorPermissions {
     /// returns true if account_id is not denied per connector type
     pub fn can_bridge(&self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
         match connector_type {
-            ConnectorType::FT => self.account_matches_rule(account_id.as_str(), &self.allow_regex_rules_for_bridging_fts),
-            ConnectorType::NFT => self.account_matches_rule(account_id.as_str(), &self.allow_regex_rules_for_bridging_nfts),
-            ConnectorType::XSC => self.account_matches_rule(account_id.as_str(), &self.allow_regex_rules_for_cross_shard_calls),
+            ConnectorType::FT => self.account_matches_rule(
+                account_id.as_str(),
+                &self.allow_regex_rules_for_bridging_fts,
+            ),
+            ConnectorType::NFT => self.account_matches_rule(
+                account_id.as_str(),
+                &self.allow_regex_rules_for_bridging_nfts,
+            ),
+            ConnectorType::XSC => self.account_matches_rule(
+                account_id.as_str(),
+                &self.allow_regex_rules_for_cross_shard_calls,
+            ),
         }
     }
 
     // adds new regex rule to the list of regex rules per connector type, can only be called by the corresponding connector
-    pub fn add_allow_regex_rule(&mut self, regex_rule: &String, connector_type: ConnectorType) -> bool {
+    #[payable]
+    pub fn add_allow_regex_rule(
+        &mut self,
+        regex_rule: &String,
+        connector_type: ConnectorType,
+    ) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             *self.connector_from_type(connector_type),
             "Only corresponding connector can add regex rules to the rule list"
         );
-        match connector_type {
+        let initial_storage = env::storage_usage() as u128;
+
+        let action_success = match connector_type {
             ConnectorType::FT => self.allow_regex_rules_for_bridging_fts.insert(regex_rule),
             ConnectorType::NFT => self.allow_regex_rules_for_bridging_nfts.insert(regex_rule),
-            ConnectorType::XSC => self.allow_regex_rules_for_cross_shard_calls.insert(regex_rule),
-        }
+            ConnectorType::XSC => self
+                .allow_regex_rules_for_cross_shard_calls
+                .insert(regex_rule),
+        };
+
+        let current_storage = env::storage_usage() as u128;
+        self.require_enough_deposit(current_storage, initial_storage);
+
+        action_success
     }
 
     // removes regex rule from the list of regex rules per connector type, can only be called by the corresponding connector
-    pub fn remove_allowed_regex_rule(&mut self, regex_rule: &String, connector_type: ConnectorType) -> bool {
+    pub fn remove_allowed_regex_rule(
+        &mut self,
+        regex_rule: &String,
+        connector_type: ConnectorType,
+    ) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             *self.connector_from_type(connector_type),
@@ -98,40 +134,69 @@ impl ConnectorPermissions {
         match connector_type {
             ConnectorType::FT => self.allow_regex_rules_for_bridging_fts.remove(regex_rule),
             ConnectorType::NFT => self.allow_regex_rules_for_bridging_nfts.remove(regex_rule),
-            ConnectorType::XSC => self.allow_regex_rules_for_cross_shard_calls.remove(regex_rule),
+            ConnectorType::XSC => self
+                .allow_regex_rules_for_cross_shard_calls
+                .remove(regex_rule),
         }
     }
 
     // adds the account regex rule and the contract regex rule to a denied list, can only be called by cross shard calls connector contract
-    pub fn deny_cross_shard_call_per_contract(&mut self, account_regex: &String, contract_regex: &String) -> bool {
+    #[payable]
+    pub fn deny_cross_shard_call_per_contract(
+        &mut self,
+        account_regex: &String,
+        contract_regex: &String,
+    ) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             self.xsc_connector_account,
             "Only cross shard connector can add accounts regex rules to the deny list for contract regex rule"
         );
-        self.deny_regex_account_per_regex_contract_for_cross_shard_calls.insert(&(contract_regex.to_string(), account_regex.to_string()))
+        let initial_storage = env::storage_usage() as u128;
+
+        let action_success = self.deny_regex_account_per_regex_contract_for_cross_shard_calls
+            .insert(&(contract_regex.to_string(), account_regex.to_string()));
+
+        let current_storage = env::storage_usage() as u128;
+        self.require_enough_deposit(current_storage, initial_storage);
+
+        action_success
     }
 
     // removes the account regex rule and the contract regex rule from a denied list, can only be called by cross shard calls connector contract
-    pub fn remove_denied_cross_shard_call_per_contract(&mut self, account_regex: &String, contract_regex: &String) -> bool {
+    pub fn remove_denied_cross_shard_call_per_contract(
+        &mut self,
+        account_regex: &String,
+        contract_regex: &String,
+    ) -> bool {
         assert_eq!(
             env::predecessor_account_id(),
             self.xsc_connector_account,
             "Only cross shard connector can remove accounts regex rules from the deny list for contract regex rule"
         );
-        self.deny_regex_account_per_regex_contract_for_cross_shard_calls.remove(&(contract_regex.to_string(), account_regex.to_string()))
+        self.deny_regex_account_per_regex_contract_for_cross_shard_calls
+            .remove(&(contract_regex.to_string(), account_regex.to_string()))
     }
 
     // checks if account_id is denied to make cross shard contract calls and whether account_id and contract_id pair is denied by any of the regex rules
-    pub fn can_make_cross_shard_call_for_contract(&self, account_id: &AccountId, contract_id: AccountId) -> bool {
+    pub fn can_make_cross_shard_call_for_contract(
+        &self,
+        account_id: &AccountId,
+        contract_id: AccountId,
+    ) -> bool {
         if !self.can_bridge(account_id, ConnectorType::XSC) {
             return false;
         }
 
-        for (contract_rule, account_rule) in self.deny_regex_account_per_regex_contract_for_cross_shard_calls.iter() {
+        for (contract_rule, account_rule) in self
+            .deny_regex_account_per_regex_contract_for_cross_shard_calls
+            .iter()
+        {
             let contract_regex = Regex::new(&contract_rule).unwrap();
             let account_regex = Regex::new(&account_rule).unwrap();
-            if contract_regex.is_match(contract_id.as_str()) && account_regex.is_match(account_id.as_str()) {
+            if contract_regex.is_match(contract_id.as_str())
+                && account_regex.is_match(account_id.as_str())
+            {
                 return false;
             }
         }
