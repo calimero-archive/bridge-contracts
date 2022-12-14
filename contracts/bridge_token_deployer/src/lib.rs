@@ -93,7 +93,7 @@ impl BridgeTokenDeployer {
 
         match env::promise_result(0) {
             PromiseResult::Successful(_) => (),
-            _ => env::panic_str("Deploy failed2"),
+            _ => env::panic_str("Bridge token deployer deployment failed"),
         };
 
         env::value_return(&serde_json::to_vec(&(bridge_token_address,)).unwrap());
