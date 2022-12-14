@@ -3,6 +3,9 @@ use near_contract_standards::fungible_token::events::FtMint;
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
+use near_contract_standards::storage_management::{
+    StorageManagement, StorageBalance, StorageBalanceBounds
+};
 use near_contract_standards::fungible_token::FungibleToken;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::{Base64VecU8, U128};
@@ -122,7 +125,36 @@ impl BridgeToken {
 }
 
 near_contract_standards::impl_fungible_token_core!(BridgeToken, token);
-near_contract_standards::impl_fungible_token_storage!(BridgeToken, token);
+
+#[near_bindgen]
+impl StorageManagement for BridgeToken {
+    #[payable]
+    fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        self.token.storage_deposit(account_id, registration_only)
+    }
+
+    #[payable]
+    fn storage_withdraw(&mut self, _amount: Option<U128>) -> StorageBalance {
+        panic!("storage_withdraw method is not supported for bridged tokens.")
+    }
+
+    #[payable]
+    fn storage_unregister(&mut self, _force: Option<bool>) -> bool {
+        panic!("storage_unregister method is not supported for bridged tokens.")
+    }
+
+    fn storage_balance_bounds(&self) -> StorageBalanceBounds {
+        self.token.storage_balance_bounds()
+    }
+
+    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+        self.token.storage_balance_of(account_id)
+    }
+}
 
 #[near_bindgen]
 impl FungibleTokenMetadataProvider for BridgeToken {
