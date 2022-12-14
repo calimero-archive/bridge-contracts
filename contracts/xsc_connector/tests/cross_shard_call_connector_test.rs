@@ -7,7 +7,7 @@ mod connector {
         use near_units::{parse_gas, parse_near};
         use test_utils::file_as_json;
         use types::ConnectorType;
-        use utils::hashes::{decode_hex};
+        use utils::hashes::{decode_hex, encode_hex};
         use utils::Hash;
         use types::{FullOutcomeProof};
         use workspaces::prelude::*;
@@ -155,7 +155,7 @@ mod connector {
                 .unwrap();
 
             assert!(cross_call_execute_result.logs().len() == 3);
-            assert!(cross_call_execute_result.logs()[0] == "RecordProof:f596ebe3e36802cd905f53bb44a09c83feaad206ae6d8535262b1f4c4d5c00bc");
+            assert!(cross_call_execute_result.logs()[0] == format!("RecordProof:{}", encode_hex(cross_call_execute_proof.outcome_proof.outcome_with_id.id.as_slice())));
             assert!(cross_call_execute_result.logs()[1] == format!("game ended, called by the connector {}", connector.id().to_string()));
             assert!(cross_call_execute_result.logs()[2] == format!("CALIMERO_EVENT_CROSS_RESPONSE:testtictactoe.90.calimero.testnet:callback_game_ended::{}", TIC_TAC_TOE_ACCOUNT_90));
 
@@ -210,7 +210,7 @@ mod connector {
                 .unwrap();
 
             assert!(cross_call_receive_response_result.logs().len() == 2);
-            assert!(cross_call_receive_response_result.logs()[0] == "RecordProof:3681f812e71c92e11cf92bf19494916f994be8688a182b9b078e9025ac68f046");
+            assert!(cross_call_receive_response_result.logs()[0] == format!("RecordProof:{}", encode_hex(cross_call_receive_response_proof.outcome_proof.outcome_with_id.id.as_slice())));
             assert!(cross_call_receive_response_result.logs()[1] == "GOT THE CALLBACK WITH EXEC RESULT 1");
         }
 

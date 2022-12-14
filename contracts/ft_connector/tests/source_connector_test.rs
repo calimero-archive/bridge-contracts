@@ -5,7 +5,7 @@ mod connector {
         use near_sdk::serde_json::json;
         use near_units::{parse_gas, parse_near};
         use test_utils::file_as_json;
-        use utils::hashes::{decode_hex};
+        use utils::hashes::{decode_hex, encode_hex};
         use utils::Hash;
         use types::{FullOutcomeProof, ConnectorType};
         use workspaces::prelude::*;
@@ -263,7 +263,7 @@ mod connector {
                 .unwrap();
 
             assert!(unlock_execution_result.logs().len() == 2);
-            assert!(unlock_execution_result.logs()[0] == format!("RecordProof:{}", block_merkle_root));
+            assert!(unlock_execution_result.logs()[0] == format!("RecordProof:{}", encode_hex(burn_proof.outcome_proof.outcome_with_id.id.as_slice())));
 
             // Alice got 345 unlocked from the source connector
             let event_json: serde_json::Value = serde_json::from_str(unlock_execution_result.logs()[1].strip_prefix("EVENT_JSON:").unwrap()).unwrap();
