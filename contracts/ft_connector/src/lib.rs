@@ -71,10 +71,10 @@ impl FungibleTokenConnector {
     /// Used to register a connector to use FT that requires prior registration
     /// ex. wrap.testnet
     #[payable]
-    pub fn register_ft(&mut self, ft_address: AccountId, method: String) {
+    pub fn register_ft(&mut self, ft_address: AccountId) {
         env::promise_return(env::promise_create(
             ft_address,
-            &method,
+            "storage_deposit",
             &Vec::<u8>::new(),
             env::attached_deposit(),
             REGISTER_FT_GAS,
