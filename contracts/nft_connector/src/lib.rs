@@ -11,7 +11,7 @@ use near_sdk::{
     env, near_bindgen, require, AccountId, Balance, Gas, PanicOnDefault, PromiseResult,
 };
 use types::{ConnectorType, FullOutcomeProof};
-use utils::{hashes, Hash, Hashable};
+use utils::{hashes, Hash};
 
 use near_sdk::PublicKey;
 

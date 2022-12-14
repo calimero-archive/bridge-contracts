@@ -8,7 +8,7 @@ use near_sdk::{
 };
 
 use types::FullOutcomeProof;
-use utils::{hashes, Hash, Hashable};
+use utils::{hashes, Hash};
 
 const NO_DEPOSIT: Balance = 0;
 

@@ -246,7 +246,7 @@ macro_rules! impl_other_network_aware {
                     "Proof expired"
                 );
 
-                let proof_key = proof.block_header_lite.hash();
+                let proof_key = proof.outcome_proof.outcome_with_id.id;
                 require!(
                     !self.used_events.contains(&proof_key),
                     "Event cannot be reused for depositing."
