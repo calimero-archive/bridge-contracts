@@ -66,8 +66,8 @@ impl Prover {
         env::promise_return(promise_result)
     }
 
+    #[private]
     pub fn merkle_root_callback(&self, block_header_lite_hash: Hash, block_proof: MerklePath) {
-        near_sdk::assert_self();
         require!(env::promise_results_count() == 1);
 
         let expected_block_merkle_root = match env::promise_result(0) {

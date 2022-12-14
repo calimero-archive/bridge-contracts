@@ -10,8 +10,8 @@ macro_rules! impl_admin_controlled {
                 self.$paused
             }
 
+            #[private]
             fn set_paused(&mut self, paused: Mask) {
-                near_sdk_inner::assert_self();
                 self.$paused = paused;
             }
         }

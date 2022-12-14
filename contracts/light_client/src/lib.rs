@@ -81,8 +81,8 @@ impl LightClient {
     }
 
     #[cfg(reset)]
+    #[private]
     pub fn reset_state(&mut self) {
-        near_sdk::assert_self();
         self.epochs = Vec::new();
         self.current_height = 0;
         self.initialized = false;
@@ -95,8 +95,8 @@ impl LightClient {
     }
 
     /// The first part of initialization -- setting the validators of the current epoch.
+    #[private]
     pub fn init_with_validators(&mut self, initial_validators: Vec<Validator>) {
-        near_sdk::assert_self();
         require!(
             !self.is_initialized() && self.epochs.is_empty(),
             "Wrong initialization stage"
@@ -116,8 +116,8 @@ impl LightClient {
     }
 
     /// The second part of the initialization
+    #[private]
     pub fn init_with_block(&mut self, block: Block) {
-        near_sdk::assert_self();
         require!(
             !self.is_initialized() && !self.epochs.is_empty(),
             "Wrong initialization stage"
