@@ -23,6 +23,7 @@ pub struct BridgeToken {
     base_uri: Option<String>,
     paused: Mask,
     icon: Option<String>,
+    metadata_set: bool,
 }
 
 #[ext_contract(ext_connector)]
@@ -56,10 +57,10 @@ impl BridgeToken {
             base_uri: None,
             paused: Mask::default(),
             icon: None,
+            metadata_set: false,
         }
     }
 
-    // TODO see if this needs to be secured to only call it once
     pub fn set_metadata(
         &mut self,
         name: String,
@@ -71,6 +72,7 @@ impl BridgeToken {
     ) {
         // Only owner can change the metadata
         assert!(self.controller_or_self(), "Only owner can change NFT contract metadata");
+        assert!(!self.metadata_set, "Metadata was already set");
 
         self.name = name;
         self.symbol = symbol;
@@ -78,6 +80,7 @@ impl BridgeToken {
         self.reference_hash = reference_hash;
         self.icon = icon;
         self.base_uri = base_uri;
+        self.metadata_set = true;
     }
 
     #[payable]

@@ -125,11 +125,14 @@ impl NonFungibleTokenConnector {
             _ => None,
         };
 
-        let metadata = if let Some(token_data) = promise_result {
+        let mut metadata = if let Some(token_data) = promise_result {
             token_data.metadata
         } else {
-            // TODO check this and handle none from the above
-            Some(TokenMetadata {
+            None
+        };
+
+        if metadata.is_none() {
+            metadata = Some(TokenMetadata {
                 title: None,
                 description: None,
                 media: None,
@@ -143,7 +146,7 @@ impl NonFungibleTokenConnector {
                 reference: None,
                 reference_hash: None,
             })
-        };
+        }
 
         let permission_promise = env::promise_create(
             self.connector_permissions_account.clone(),

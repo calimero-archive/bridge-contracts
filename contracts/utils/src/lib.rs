@@ -403,7 +403,7 @@ pub mod hashes {
             _ => None,
         }
     }
-    // TODO make generic combine hash
+
     pub fn combine_hash2(x: Hash, y: Hash) -> Hash {
         let combined: Vec<u8> = x.iter().copied().chain(y.iter().copied()).collect();
 
