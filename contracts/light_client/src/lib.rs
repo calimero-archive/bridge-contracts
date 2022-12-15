@@ -4,6 +4,7 @@ extern crate near_sdk;
 
 use admin_controlled::Mask;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::collections::Vector;
 use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
 use std::collections::VecDeque;
 use types::signature::Signature;
@@ -23,7 +24,7 @@ const DEFAULT_BLOCKS_TO_KEEP: usize = 7;
 #[near_bindgen]
 #[derive(PanicOnDefault, BorshDeserialize, BorshSerialize)]
 pub struct LightClient {
-    epochs: Vec<Epoch>,
+    epochs: Vector<Epoch>,
     current_height: u64,
     // Address of the account which submitted the last block.
     last_submitter: AccountId,
@@ -35,7 +36,7 @@ pub struct LightClient {
     next_hash: Hash,
     timestamp: u64,
     signature_set: u128,
-    signatures: Vec<Signature>,
+    signatures: Vector<Signature>,
     current_epoch_index: usize,
     block_hashes: VecDeque<(u64, Hash)>,
     block_merkle_roots: VecDeque<(u64, Hash)>,
@@ -57,7 +58,7 @@ impl LightClient {
             DEFAULT_BLOCKS_TO_KEEP
         };
         Self {
-            epochs: Vec::new(),
+            epochs: Vector::new(b"e"),
             current_height: 0,
             last_submitter: env::signer_account_id(),
             initialized: false,
@@ -67,7 +68,7 @@ impl LightClient {
             next_hash: Default::default(),
             timestamp: 0,
             signature_set: 0,
-            signatures: Vec::new(),
+            signatures: Vector::new(b"s"),
             current_epoch_index: 0,
             block_hashes: VecDeque::new(),
             block_merkle_roots: VecDeque::new(),
@@ -83,12 +84,12 @@ impl LightClient {
     #[cfg(reset)]
     #[private]
     pub fn reset_state(&mut self) {
-        self.epochs = Vec::new();
+        self.epochs.clear();
         self.current_height = 0;
         self.initialized = false;
         self.next_epoch = false;
         self.signature_set = 0;
-        self.signatures = Vec::new();
+        self.signatures.clear();
         self.current_epoch_index = 0;
         self.block_merkle_roots = VecDeque::new();
         self.block_hashes = VecDeque::new();
@@ -102,7 +103,7 @@ impl LightClient {
             "Wrong initialization stage"
         );
         for _ in 0..NUM_OF_EPOCHS {
-            self.epochs.push(Epoch {
+            self.epochs.push(&Epoch {
                 epoch_id: Default::default(),
                 keys: Vec::new(),
                 stake_threshold: 0,
@@ -110,9 +111,13 @@ impl LightClient {
             });
         }
         for _ in 0..MAX_BLOCK_PRODUCERS {
-            self.signatures.push(Default::default());
+            self.signatures.push(&Default::default());
         }
-        LightClient::set_block_producers(&initial_validators, &mut self.epochs[0]);
+        self.set_block_producers(
+            &initial_validators,
+            self.epochs.iter().next().unwrap(),
+            0,
+        );
     }
 
     /// The second part of the initialization
@@ -129,14 +134,25 @@ impl LightClient {
         self.initialized = true;
 
         self.current_height = block.inner_lite.height;
-        self.epochs[0].epoch_id = block.inner_lite.epoch_id;
-        self.epochs[1].epoch_id = block.inner_lite.next_epoch_id;
+
+        let mut epoch = self.epochs.iter().next().unwrap();
+        epoch.epoch_id = block.inner_lite.epoch_id;
+        self.epochs.replace(0, &epoch);
+
+        let mut epoch = self.epochs.iter().nth(1).unwrap();
+        epoch.epoch_id = block.inner_lite.next_epoch_id;
+        self.epochs.replace(1, &epoch);
+
         self.block_hashes
             .push_front((self.current_height, block.hash()));
         self.block_merkle_roots
             .push_front((self.current_height, block.inner_lite.block_merkle_root));
 
-        LightClient::set_block_producers(&block.next_bps.unwrap(), &mut self.epochs[1]);
+        self.set_block_producers(
+            &block.next_bps.unwrap(),
+            self.epochs.iter().nth(1).unwrap(),
+            1,
+        );
     }
 
     pub fn current_height(&self) -> u64 {
@@ -171,24 +187,38 @@ impl LightClient {
             "New block must have higher height"
         );
 
-        let from_next_epoch =
-            if block.inner_lite.epoch_id == self.epochs[self.current_epoch_index].epoch_id {
-                false
-            } else if block.inner_lite.epoch_id
-                == self.epochs[(self.current_epoch_index + 1) % NUM_OF_EPOCHS].epoch_id
-            {
-                true
-            } else {
-                // in this case do a revert
-                require!(false, "Epoch id of the block is not valid");
-                false
-            };
+        let from_next_epoch = if block.inner_lite.epoch_id
+            == self
+                .epochs
+                .iter()
+                .nth(self.current_epoch_index)
+                .unwrap()
+                .epoch_id
+        {
+            false
+        } else if block.inner_lite.epoch_id
+            == self
+                .epochs
+                .iter()
+                .nth((self.current_epoch_index + 1) % NUM_OF_EPOCHS)
+                .unwrap()
+                .epoch_id
+        {
+            true
+        } else {
+            // in this case do a revert
+            require!(false, "Epoch id of the block is not valid");
+            false
+        };
 
         // Check that the new block is signed by more than 2/3 of the validators.
-        let this_epoch = if from_next_epoch {
-            &self.epochs[(self.current_epoch_index + 1) % NUM_OF_EPOCHS]
+        let this_epoch = &if from_next_epoch {
+            self.epochs
+                .iter()
+                .nth((self.current_epoch_index + 1) % NUM_OF_EPOCHS)
+                .unwrap()
         } else {
-            &self.epochs[self.current_epoch_index]
+            self.epochs.iter().nth(self.current_epoch_index).unwrap()
         };
 
         // Last block in the epoch might contain extra approvals that light client can ignore.
@@ -229,7 +259,7 @@ impl LightClient {
         for i in 0..keys_len {
             if let Some(approval) = block.approvals_after_next[i].clone() {
                 self.signature_set |= 1 << i;
-                self.signatures[i] = approval;
+                self.signatures.replace(i as u64, &approval);
                 if signature_stake < this_epoch.stake_threshold {
                     self.check_block_producer_signature_in_head(i);
                 }
@@ -239,9 +269,14 @@ impl LightClient {
         self.next_epoch = from_next_epoch;
 
         if from_next_epoch {
-            let mut next_epoch = &mut self.epochs[(self.current_epoch_index + 2) % NUM_OF_EPOCHS];
+            let epoch_idx = (self.current_epoch_index + 2) % NUM_OF_EPOCHS;
+            let mut next_epoch = self.epochs.iter().nth(epoch_idx).unwrap();
             next_epoch.epoch_id = block.inner_lite.next_epoch_id;
-            LightClient::set_block_producers(block.next_bps.as_ref().unwrap(), next_epoch);
+            self.set_block_producers(
+                block.next_bps.as_ref().unwrap(),
+                next_epoch,
+                epoch_idx as u64,
+            );
         }
         self.last_submitter = env::predecessor_account_id();
 
@@ -265,12 +300,16 @@ impl LightClient {
             self.signature_set & (1 << signature_index) != 0,
             "No such signature"
         );
-        let untrusted_epoch = &self.epochs[if self.next_epoch {
-            (self.current_epoch_index + 1) % NUM_OF_EPOCHS
-        } else {
-            self.current_epoch_index
-        }];
-        let signature = &self.signatures[signature_index];
+        let untrusted_epoch = &self
+            .epochs
+            .iter()
+            .nth(if self.next_epoch {
+                (self.current_epoch_index + 1) % NUM_OF_EPOCHS
+            } else {
+                self.current_epoch_index
+            })
+            .unwrap();
+        let signature = &self.signatures.iter().nth(signature_index).unwrap();
         let message = [
             &[0],
             &self.next_hash as &[_],
@@ -287,7 +326,12 @@ impl LightClient {
             .unwrap()
     }
 
-    fn set_block_producers(block_producers: &Vec<Validator>, epoch: &mut Epoch) {
+    fn set_block_producers(
+        &mut self,
+        block_producers: &Vec<Validator>,
+        mut epoch: Epoch,
+        epoch_idx: u64,
+    ) {
         require!(
             (block_producers.len() as u32) <= MAX_BLOCK_PRODUCERS,
             "It is not expected having that many block producers for the provided block"
@@ -303,6 +347,8 @@ impl LightClient {
             epoch.stakes.push(*block_producer.stake());
         }
         epoch.stake_threshold = (total_stake * 2) / 3;
+
+        self.epochs.replace(epoch_idx, &epoch);
     }
 }
 
