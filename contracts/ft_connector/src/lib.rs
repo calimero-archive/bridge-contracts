@@ -82,7 +82,12 @@ impl FungibleTokenConnector {
     }
 
     /// Emits a calimero lock event if transfer is successful
-    pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, #[allow(unused_variables)] msg: String) {
+    pub fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        #[allow(unused_variables)] msg: String,
+    ) {
         let permission_promise = env::promise_create(
             self.connector_permissions_account.clone(),
             "can_bridge",
@@ -104,12 +109,7 @@ impl FungibleTokenConnector {
     }
 
     #[private]
-    pub fn lock(
-        &mut self,
-        sender_id: AccountId,
-        ft_contract_id: AccountId,
-        amount: U128,
-    ) {
+    pub fn lock(&mut self, sender_id: AccountId, ft_contract_id: AccountId, amount: U128) {
         require!(env::promise_results_count() == 1);
 
         let verification_success = match env::promise_result(0) {
