@@ -48,6 +48,10 @@ pub struct LightClient {
 
 pub const PAUSE_ADD_BLOCK_HEADER: Mask = 1;
 
+trait NoBindgen {
+    fn set_block_producers(&mut self, block_producers: &[Validator], epoch: Epoch, epoch_idx: u64);
+}
+
 #[near_bindgen]
 impl LightClient {
     #[init]
@@ -113,11 +117,7 @@ impl LightClient {
         for _ in 0..MAX_BLOCK_PRODUCERS {
             self.signatures.push(&Default::default());
         }
-        self.set_block_producers(
-            &initial_validators,
-            self.epochs.iter().next().unwrap(),
-            0,
-        );
+        self.set_block_producers(&initial_validators, self.epochs.iter().next().unwrap(), 0);
     }
 
     /// The second part of the initialization
@@ -325,10 +325,12 @@ impl LightClient {
             .try_into()
             .unwrap()
     }
+}
 
+impl NoBindgen for LightClient {
     fn set_block_producers(
         &mut self,
-        block_producers: &Vec<Validator>,
+        block_producers: &[Validator],
         mut epoch: Epoch,
         epoch_idx: u64,
     ) {
