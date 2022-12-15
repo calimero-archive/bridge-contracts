@@ -181,10 +181,10 @@ impl ConnectorPermissions {
     // checks if account_id is denied to make cross shard contract calls and whether account_id and contract_id pair is denied by any of the regex rules
     pub fn can_make_cross_shard_call_for_contract(
         &self,
-        account_id: &AccountId,
+        account_id: AccountId,
         contract_id: AccountId,
     ) -> bool {
-        if !self.can_bridge(account_id, ConnectorType::XSC) {
+        if !self.can_bridge(&account_id, ConnectorType::XSC) {
             return false;
         }
 
