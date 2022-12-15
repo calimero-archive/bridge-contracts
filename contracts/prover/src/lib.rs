@@ -1,6 +1,5 @@
 extern crate near_sdk;
 
-use admin_controlled::Mask;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::{env, near_bindgen, require, serde_json, PanicOnDefault, PromiseResult};
 use types::{FullOutcomeProof, MerklePath};
@@ -11,8 +10,6 @@ pub use utils::{hashes, Hash, Hashable};
 pub struct Prover {
     // account id of light client
     light_client_account_id: String,
-    // Mask determining all paused functions
-    paused: Mask,
 }
 
 #[near_bindgen]
@@ -21,7 +18,6 @@ impl Prover {
     pub fn new(light_client_account_id: String) -> Self {
         Prover {
             light_client_account_id,
-            paused: Mask::default(),
         }
     }
 
