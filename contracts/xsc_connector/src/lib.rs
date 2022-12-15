@@ -116,7 +116,7 @@ impl CrossShardConnector {
         source_callback_method: String,
         cross_call_initiator_account_id: String,
     ) -> bool {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let verification_success = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
@@ -141,7 +141,7 @@ impl CrossShardConnector {
 
     #[payable]
     pub fn cross_call_execute(&mut self, proof: FullOutcomeProof, height: u64) {
-        require!(self.locker_account.is_some());
+        require!(self.locker_account.is_some(), "Locker account should be set");
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
                 == self.locker_account.as_ref().unwrap().to_string(),
@@ -212,7 +212,7 @@ impl CrossShardConnector {
         source_contract_method: String,
         proof: FullOutcomeProof,
     ) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let verification_success = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
@@ -258,7 +258,7 @@ impl CrossShardConnector {
         source_contract_method: String,
         destination_contract: AccountId,
     ) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let execution_result = match env::promise_result(0) {
             PromiseResult::Successful(x) => base64::encode(x),
@@ -273,7 +273,7 @@ impl CrossShardConnector {
 
     #[payable]
     pub fn cross_call_receive_response(&mut self, proof: FullOutcomeProof, height: u64) {
-        require!(self.locker_account.is_some());
+        require!(self.locker_account.is_some(), "Locker account should be set");
         require!(
             proof.outcome_proof.outcome_with_id.outcome.executor_id
                 == self.locker_account.as_ref().unwrap().to_string(),
@@ -332,7 +332,7 @@ impl CrossShardConnector {
         response: String,
         proof: FullOutcomeProof,
     ) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let verification_success = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),

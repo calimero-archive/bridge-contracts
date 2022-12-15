@@ -54,7 +54,10 @@ impl BridgeTokenDeployer {
 
     #[payable]
     pub fn deploy_bridge_token(&mut self, source_address: String) {
-        require!(env::predecessor_account_id() == self.bridge_account);
+        require!(
+            env::predecessor_account_id() == self.bridge_account,
+            "Deploy bridge token can be called with and only with a corresponding bridge account"
+        );
 
         let bridge_token_account_id = AccountId::new_unchecked(format!(
             "{}.{}",
@@ -89,7 +92,7 @@ impl BridgeTokenDeployer {
 
     #[private]
     pub fn complete_deployment(&mut self, bridge_token_address: AccountId) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         match env::promise_result(0) {
             PromiseResult::Successful(_) => (),

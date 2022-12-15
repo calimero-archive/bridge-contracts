@@ -114,7 +114,7 @@ impl NonFungibleTokenConnector {
         token_id: String,
         #[allow(unused_variables)] msg: String,
     ) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let promise_result = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<Option<Token>>(&x).unwrap(),
@@ -167,7 +167,7 @@ impl NonFungibleTokenConnector {
         token_id: String,
         metadata: Option<TokenMetadata>,
     ) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let can_bridge_promise_result = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),

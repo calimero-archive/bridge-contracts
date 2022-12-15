@@ -67,7 +67,7 @@ impl BridgeToken {
         icon: Option<String>,
     ) {
         // Only owner can change the metadata
-        assert!(self.controller_or_self());
+        assert!(self.controller_or_self(), "Only owner can change FT contract metadata");
 
         self.name = name;
         self.symbol = symbol;

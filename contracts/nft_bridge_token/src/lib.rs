@@ -70,7 +70,7 @@ impl BridgeToken {
         base_uri: Option<String>,
     ) {
         // Only owner can change the metadata
-        assert!(self.controller_or_self());
+        assert!(self.controller_or_self(), "Only owner can change NFT contract metadata");
 
         self.name = name;
         self.symbol = symbol;

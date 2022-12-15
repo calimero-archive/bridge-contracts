@@ -64,7 +64,7 @@ impl Prover {
 
     #[private]
     pub fn merkle_root_callback(&self, block_header_lite_hash: Hash, block_proof: MerklePath) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let expected_block_merkle_root = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<Option<Hash>>(&x).unwrap(),
