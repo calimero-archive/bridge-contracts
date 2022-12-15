@@ -55,13 +55,17 @@ pub const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 pub const PAUSE_MINT: Mask = 1 << 1;
 pub const PAUSE_LOCK: Mask = 1 << 2;
 
-connector_base::impl_deployer_aware!(FungibleTokenConnector, "CALIMERO_EVENT_DEPLOY_FT");
+const CALIMERO_EVENT_DEPLOY_FT: &str = "CALIMERO_EVENT_DEPLOY_FT";
+const CALIMERO_EVENT_BURN_FT: &str = "CALIMERO_EVENT_BURN_FT";
+const CALIMERO_EVENT_LOCK_FT: &str = "CALIMERO_EVENT_LOCK_FT";
+
+connector_base::impl_deployer_aware!(FungibleTokenConnector, CALIMERO_EVENT_DEPLOY_FT);
 connector_base::impl_other_network_aware!(FungibleTokenConnector);
-connector_base::impl_other_network_token_aware!(FungibleTokenConnector, "CALIMERO_EVENT_DEPLOY_FT");
+connector_base::impl_other_network_token_aware!(FungibleTokenConnector, CALIMERO_EVENT_DEPLOY_FT);
 connector_base::impl_token_mint!(FungibleTokenConnector);
 connector_base::impl_token_unlock!(
     FungibleTokenConnector,
-    "CALIMERO_EVENT_BURN_FT",
+    CALIMERO_EVENT_BURN_FT,
     U128,
     "ft_transfer"
 );
@@ -119,8 +123,11 @@ impl FungibleTokenConnector {
 
         if verification_success {
             env::log_str(&format!(
-                "CALIMERO_EVENT_LOCK_FT:{}:{}:{}",
-                ft_contract_id, sender_id, amount.0
+                "{}:{}:{}:{}",
+                CALIMERO_EVENT_LOCK_FT,
+                ft_contract_id, 
+                sender_id, 
+                amount.0
             ));
 
             env::value_return(&serde_json::to_vec(&U128(0).0.to_string()).unwrap());
@@ -139,7 +146,7 @@ impl FungibleTokenConnector {
 
     fn verify_mint_params(params: Vec<String>) {
         require!(
-            params.len() == 4 && params[0] == "CALIMERO_EVENT_LOCK_FT",
+            params.len() == 4 && params[0] == CALIMERO_EVENT_LOCK_FT,
             "Untrusted proof, lock receipt proof required"
         );
     }

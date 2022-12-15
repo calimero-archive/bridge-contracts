@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! impl_deployer_aware {
-    ($contract: ident, $deploy_event: literal) => {
+    ($contract: ident, $deploy_event: ident) => {
         #[near_bindgen]
         impl DeployerAware for $contract {
             #[payable]
@@ -77,7 +77,7 @@ macro_rules! impl_deployer_aware {
 
 #[macro_export]
 macro_rules! impl_other_network_token_aware {
-    ($contract: ident, $deploy_event: literal) => {
+    ($contract: ident, $deploy_event: ident) => {
         #[near_bindgen]
         #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
         pub struct $contract {
@@ -369,7 +369,7 @@ macro_rules! impl_token_mint {
 
 #[macro_export]
 macro_rules! impl_token_unlock {
-    ($contract: ident, $burn_event: literal, $transferable: ident, $transfer_function: literal) => {
+    ($contract: ident, $burn_event: ident, $transferable: ident, $transfer_function: literal) => {
         #[near_bindgen]
         impl TokenUnlock<$transferable> for $contract {
             /// used when burning Token on this network
