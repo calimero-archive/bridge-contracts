@@ -49,7 +49,7 @@ const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
 const PROVE_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
 /// Gas to call can_bridge on permissions manager
-const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
+const PERMISSIONS_VERIFICATION_GAS: Gas = Gas(40_000_000_000_000);
 
 pub const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 pub const PAUSE_MINT: Mask = 1 << 1;
@@ -93,7 +93,7 @@ impl FungibleTokenConnector {
             "can_bridge",
             &serde_json::to_vec(&(&sender_id, ConnectorType::FT)).unwrap(),
             NO_DEPOSIT,
-            PERMISSIONS_OUTCOME_GAS,
+            PERMISSIONS_VERIFICATION_GAS,
         );
 
         self.assert_not_paused(PAUSE_LOCK);
@@ -104,7 +104,7 @@ impl FungibleTokenConnector {
             "lock",
             &serde_json::to_vec(&(sender_id, env::predecessor_account_id(), amount)).unwrap(),
             NO_DEPOSIT,
-            PERMISSIONS_OUTCOME_GAS,
+            PERMISSIONS_VERIFICATION_GAS,
         ));
     }
 

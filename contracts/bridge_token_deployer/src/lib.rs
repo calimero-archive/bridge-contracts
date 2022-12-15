@@ -65,20 +65,20 @@ impl BridgeTokenDeployer {
             env::current_account_id()
         ));
 
-        let promise = env::promise_batch_create(&bridge_token_account_id);
-        env::promise_batch_action_create_account(promise);
-        env::promise_batch_action_transfer(promise, BRIDGE_TOKEN_INIT_BALANCE);
-        env::promise_batch_action_add_key_with_full_access(promise, &env::signer_account_pk(), 0);
-        env::promise_batch_action_deploy_contract(promise, BRIDGE_TOKEN_BINARY);
+        let deploy_bridge_token_batch_promise = env::promise_batch_create(&bridge_token_account_id);
+        env::promise_batch_action_create_account(deploy_bridge_token_batch_promise);
+        env::promise_batch_action_transfer(deploy_bridge_token_batch_promise, BRIDGE_TOKEN_INIT_BALANCE);
+        env::promise_batch_action_add_key_with_full_access(deploy_bridge_token_batch_promise, &env::signer_account_pk(), 0);
+        env::promise_batch_action_deploy_contract(deploy_bridge_token_batch_promise, BRIDGE_TOKEN_BINARY);
         env::promise_batch_action_function_call(
-            promise,
+            deploy_bridge_token_batch_promise,
             "new",
             &serde_json::to_vec(&(env::predecessor_account_id(),)).unwrap(),
             NO_DEPOSIT,
             BRIDGE_TOKEN_NEW,
         );
         env::promise_return(env::promise_then(
-            promise,
+            deploy_bridge_token_batch_promise,
             env::current_account_id(),
             "complete_deployment",
             &serde_json::to_vec(&(bridge_token_account_id,)).unwrap(),

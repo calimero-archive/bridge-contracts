@@ -32,7 +32,7 @@ macro_rules! impl_deployer_aware {
                     "Deposit too low"
                 );
 
-                let promise = env::promise_create(
+                let deploy_bridge_token_promise = env::promise_create(
                     self.deployer_account.clone().unwrap(),
                     "deploy_bridge_token",
                     &serde_json::to_vec(&(source_address.clone(),)).unwrap(),
@@ -41,7 +41,7 @@ macro_rules! impl_deployer_aware {
                 );
 
                 env::promise_return(env::promise_then(
-                    promise,
+                    deploy_bridge_token_promise,
                     env::current_account_id(),
                     "complete_deployment",
                     &serde_json::to_vec(&(source_address,)).unwrap(),
