@@ -109,10 +109,10 @@ impl NonFungibleTokenConnector {
     pub fn lock(
         &mut self,
         token_account: String,
-        sender_id: String,
+        #[allow(unused_variables)] sender_id: String,
         previous_owner_id: String,
         token_id: String,
-        msg: String,
+        #[allow(unused_variables)] msg: String,
     ) {
         require!(env::promise_results_count() == 1);
 
@@ -153,15 +153,7 @@ impl NonFungibleTokenConnector {
             permission_promise,
             env::current_account_id(),
             "lock_with_metadata",
-            &serde_json::to_vec(&(
-                token_account,
-                sender_id,
-                previous_owner_id,
-                token_id,
-                msg,
-                metadata,
-            ))
-            .unwrap(),
+            &serde_json::to_vec(&(token_account, previous_owner_id, token_id, metadata)).unwrap(),
             NO_DEPOSIT,
             env::prepaid_gas() / 3,
         ));
@@ -171,10 +163,8 @@ impl NonFungibleTokenConnector {
     pub fn lock_with_metadata(
         &mut self,
         token_account: String,
-        _sender_id: String,
         previous_owner_id: String,
         token_id: String,
-        _msg: String,
         metadata: Option<TokenMetadata>,
     ) {
         require!(env::promise_results_count() == 1);
