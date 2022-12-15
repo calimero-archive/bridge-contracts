@@ -3,18 +3,10 @@ macro_rules! impl_deployer_aware {
     ($contract: ident, $deploy_event: ident) => {
         #[near_bindgen]
         impl DeployerAware for $contract {
-            #[payable]
             #[private]
             fn set_deployer(&mut self, deployer_account: AccountId) {
                 require!(self.deployer_account.is_none(), "Deployer account should not be set");
-                let initial_storage = env::storage_usage() as u128;
                 self.deployer_account = Some(deployer_account);
-                let current_storage = env::storage_usage() as u128;
-                require!(
-                    env::attached_deposit()
-                        >= env::storage_byte_cost() * (current_storage - initial_storage),
-                    "Not enough attached deposit to complete initialization"
-                );
             }
 
             #[payable]
@@ -22,21 +14,11 @@ macro_rules! impl_deployer_aware {
             fn deploy_bridge_token(&mut self, source_address: String) {
                 self.assert_not_paused_flags(PAUSE_DEPLOY_TOKEN);
 
-                let initial_storage = env::storage_usage();
-                // TODO calculate future storage usage
-                let required_deposit = Balance::from(initial_storage - initial_storage)
-                    * env::storage_byte_cost()
-                    + BRIDGE_TOKEN_INIT_BALANCE;
-                require!(
-                    env::attached_deposit() >= required_deposit,
-                    "Deposit too low"
-                );
-
                 let deploy_bridge_token_promise = env::promise_create(
                     self.deployer_account.clone().unwrap(),
                     "deploy_bridge_token",
                     &serde_json::to_vec(&(source_address.clone(),)).unwrap(),
-                    required_deposit,
+                    env::attached_deposit(),
                     DEPLOY_GAS + BRIDGE_TOKEN_NEW,
                 );
 
@@ -219,18 +201,10 @@ macro_rules! impl_other_network_aware {
     ($contract: ident) => {
         #[near_bindgen]
         impl OtherNetworkAware for $contract {
-            #[payable]
             #[private]
             fn set_locker(&mut self, locker_account: AccountId) {
                 require!(self.locker_account.is_none(), "Locker account should not be set");
-                let initial_storage = env::storage_usage() as u128;
                 self.locker_account = Some(locker_account);
-                let current_storage = env::storage_usage() as u128;
-                require!(
-                    env::attached_deposit()
-                        >= env::storage_byte_cost() * (current_storage - initial_storage),
-                    "Not enough attached deposit to complete network connection"
-                );
             }
 
             /// Record proof if it is valid to make sure it is not re-used later for another deposit.
