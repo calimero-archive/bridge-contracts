@@ -6,7 +6,7 @@ macro_rules! impl_deployer_aware {
             #[payable]
             #[private]
             fn set_deployer(&mut self, deployer_account: AccountId) {
-                require!(self.deployer_account.is_none());
+                require!(self.deployer_account.is_none(), "Deployer account should not be set");
                 let initial_storage = env::storage_usage() as u128;
                 self.deployer_account = Some(deployer_account);
                 let current_storage = env::storage_usage() as u128;
@@ -52,7 +52,7 @@ macro_rules! impl_deployer_aware {
 
             #[private]
             fn complete_deployment(&mut self, source_address: AccountId) {
-                require!(env::promise_results_count() == 1);
+                require!(env::promise_results_count() == 1, "One and only one result was expected");
 
                 let bridge_token_address = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {
@@ -141,7 +141,7 @@ macro_rules! impl_other_network_token_aware {
                 destination_contract: AccountId,
                 proof: FullOutcomeProof,
             ) {
-                require!(env::promise_results_count() == 1);
+                require!(env::promise_results_count() == 1, "One and only one result was expected");
 
                 let verification_success = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {
@@ -165,7 +165,7 @@ macro_rules! impl_other_network_token_aware {
 
             #[payable]
             fn register_on_other(&mut self, proof: FullOutcomeProof, height: u64) {
-                require!(self.locker_account.is_some());
+                require!(self.locker_account.is_some(), "Locker account should be set");
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id
                         == self.locker_account.as_ref().unwrap().to_string(),
@@ -222,7 +222,7 @@ macro_rules! impl_other_network_aware {
             #[payable]
             #[private]
             fn set_locker(&mut self, locker_account: AccountId) {
-                require!(self.locker_account.is_none());
+                require!(self.locker_account.is_none(), "Locker account should not be set");
                 let initial_storage = env::storage_usage() as u128;
                 self.locker_account = Some(locker_account);
                 let current_storage = env::storage_usage() as u128;
@@ -277,7 +277,7 @@ macro_rules! impl_token_mint {
             #[payable]
             fn mint(&mut self, proof: FullOutcomeProof, height: u64) {
                 self.assert_not_paused(PAUSE_MINT);
-                require!(self.locker_account.is_some());
+                require!(self.locker_account.is_some(), "Locker account should be set");
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id
                         == self.locker_account.as_ref().unwrap().to_string(),
@@ -331,7 +331,7 @@ macro_rules! impl_token_mint {
                 params: Vec<String>,
                 proof: FullOutcomeProof,
             ) {
-                require!(env::promise_results_count() == 1);
+                require!(env::promise_results_count() == 1, "One and only one result was expected");
 
                 let verification_success = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {
@@ -390,7 +390,7 @@ macro_rules! impl_token_unlock {
             /// Used when receiving Token from other network
             #[payable]
             fn unlock(&mut self, proof: FullOutcomeProof, height: u64) {
-                require!(self.locker_account.is_some());
+                require!(self.locker_account.is_some(), "Locker account should be set");
                 require!(
                     proof.outcome_proof.outcome_with_id.outcome.executor_id
                         == self.locker_account.as_ref().unwrap().to_string(),
@@ -453,7 +453,7 @@ macro_rules! impl_token_unlock {
                 transferable: $transferable,
                 proof: FullOutcomeProof,
             ) {
-                require!(env::promise_results_count() == 1);
+                require!(env::promise_results_count() == 1, "One and only one result was expected");
 
                 let verification_success = match env::promise_result(0) {
                     PromiseResult::Successful(x) => {

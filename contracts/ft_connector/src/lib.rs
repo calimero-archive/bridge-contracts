@@ -114,7 +114,7 @@ impl FungibleTokenConnector {
 
     #[private]
     pub fn lock(&mut self, sender_id: AccountId, ft_contract_id: AccountId, amount: U128) {
-        require!(env::promise_results_count() == 1);
+        require!(env::promise_results_count() == 1, "One and only one result was expected");
 
         let verification_success = match env::promise_result(0) {
             PromiseResult::Successful(x) => serde_json::from_slice::<bool>(&x).unwrap(),
