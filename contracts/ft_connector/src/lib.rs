@@ -16,9 +16,6 @@ use near_sdk::PublicKey;
 
 const NO_DEPOSIT: Balance = 0;
 
-/// Initial balance for the BridgeToken contract to cover storage and related.
-const BRIDGE_TOKEN_INIT_BALANCE: Balance = 20_000_000_000_000_000_000_000_000; // 20e24yN, 20N
-
 /// Gas to initialize BridgeToken contract.
 const BRIDGE_TOKEN_NEW: Gas = Gas(80_000_000_000_000);
 const BRIDGE_TOKEN_COMPLETE: Gas = Gas(20_000_000_000_000);

@@ -21,9 +21,6 @@ const NO_DEPOSIT: Balance = 0;
 const BRIDGE_TOKEN_NEW: Gas = Gas(80_000_000_000_000);
 const BRIDGE_TOKEN_COMPLETE: Gas = Gas(20_000_000_000_000);
 
-/// Initial balance for the BridgeToken contract to cover storage and related.
-const BRIDGE_TOKEN_INIT_BALANCE: Balance = 50_000_000_000_000_000_000_000_000; // 50e24yN, 50N
-
 /// Gas to call mint method on bridge token.
 const MINT_GAS: Gas = Gas(30_000_000_000_000);
 
