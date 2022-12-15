@@ -391,8 +391,6 @@ mod connector {
             ).await;
         }
 
-        // TODO check that connector can still call when paused if expected
-
         #[tokio::test]
         #[should_panic(expected = "Event cannot be reused for depositing")]
         async fn test_proof_reuse_panics() {

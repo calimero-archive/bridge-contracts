@@ -178,7 +178,7 @@ pub struct Epoch {
 #[serde(crate = "near_sdk::serde")]
 pub struct FullOutcomeProof {
     pub outcome_proof: ExecutionOutcomeWithIdAndProof,
-    pub outcome_root_proof: MerklePath, // TODO: now empty array
+    pub outcome_root_proof: MerklePath,
     pub block_header_lite: BlockHeaderLight,
     pub block_proof: MerklePath,
 }
