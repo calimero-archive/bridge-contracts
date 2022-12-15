@@ -53,16 +53,20 @@ pub const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 pub const PAUSE_MINT: Mask = 1 << 1;
 pub const PAUSE_LOCK: Mask = 1 << 2;
 
-connector_base::impl_deployer_aware!(NonFungibleTokenConnector, "CALIMERO_EVENT_DEPLOY_NFT");
+const CALIMERO_EVENT_DEPLOY_NFT: &str = "CALIMERO_EVENT_DEPLOY_NFT";
+const CALIMERO_EVENT_BURN_NFT: &str = "CALIMERO_EVENT_BURN_NFT";
+const CALIMERO_EVENT_LOCK_NFT: &str = "CALIMERO_EVENT_LOCK_NFT";
+
+connector_base::impl_deployer_aware!(NonFungibleTokenConnector, CALIMERO_EVENT_DEPLOY_NFT);
 connector_base::impl_other_network_aware!(NonFungibleTokenConnector);
 connector_base::impl_other_network_token_aware!(
     NonFungibleTokenConnector,
-    "CALIMERO_EVENT_DEPLOY_NFT"
+    CALIMERO_EVENT_DEPLOY_NFT
 );
 connector_base::impl_token_mint!(NonFungibleTokenConnector);
 connector_base::impl_token_unlock!(
     NonFungibleTokenConnector,
-    "CALIMERO_EVENT_BURN_NFT",
+    CALIMERO_EVENT_BURN_NFT,
     TokenId,
     "nft_transfer"
 );
@@ -176,7 +180,8 @@ impl NonFungibleTokenConnector {
 
         if can_bridge_promise_result {
             env::log_str(&format!(
-                "CALIMERO_EVENT_LOCK_NFT:{}:{}:{}:{}",
+                "{}:{}:{}:{}:{}",
+                CALIMERO_EVENT_LOCK_NFT,
                 token_account,
                 previous_owner_id,
                 base64::encode(token_id),
@@ -200,7 +205,7 @@ impl NonFungibleTokenConnector {
 
     fn verify_mint_params(params: Vec<String>) {
         require!(
-            params.len() == 5 && params[0] == "CALIMERO_EVENT_LOCK_NFT",
+            params.len() == 5 && params[0] == CALIMERO_EVENT_LOCK_NFT,
             "Untrusted proof, lock receipt proof required"
         );
     }

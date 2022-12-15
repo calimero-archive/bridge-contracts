@@ -23,6 +23,9 @@ const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
 
 pub const PAUSE_CROSS_CALL: Mask = 1 << 0;
 
+const CALIMERO_EVENT_CROSS_CALL: &str = "CALIMERO_EVENT_CROSS_CALL";
+const CALIMERO_EVENT_CROSS_RESPONSE: &str = "CALIMERO_EVENT_CROSS_RESPONSE";
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct CrossShardConnector {
@@ -125,7 +128,8 @@ impl CrossShardConnector {
 
         if verification_success {
             env::log_str(&format!(
-                "CALIMERO_EVENT_CROSS_CALL:{}:{}:{}:{}:{}:{}:{}",
+                "{}:{}:{}:{}:{}:{}:{}:{}",
+                CALIMERO_EVENT_CROSS_CALL,
                 destination_contract_id,
                 destination_contract_method,
                 base64::encode(destination_contract_args),
@@ -153,7 +157,7 @@ impl CrossShardConnector {
             .split(':')
             .collect();
         require!(
-            parts.len() == 8 && parts[0] == "CALIMERO_EVENT_CROSS_CALL",
+            parts.len() == 8 && parts[0] == CALIMERO_EVENT_CROSS_CALL,
             "Untrusted proof, cross_call receipt proof required"
         );
         let destination_contract = parts[1];
@@ -266,8 +270,12 @@ impl CrossShardConnector {
         };
 
         env::log_str(&format!(
-            "CALIMERO_EVENT_CROSS_RESPONSE:{}:{}:{}:{}",
-            source_contract, source_contract_method, execution_result, destination_contract
+            "{}:{}:{}:{}:{}",
+            CALIMERO_EVENT_CROSS_RESPONSE,
+            source_contract,
+            source_contract_method,
+            execution_result,
+            destination_contract
         ));
     }
 
@@ -285,7 +293,7 @@ impl CrossShardConnector {
             .split(':')
             .collect();
         require!(
-            parts.len() == 5 && parts[0] == "CALIMERO_EVENT_CROSS_RESPONSE",
+            parts.len() == 5 && parts[0] == CALIMERO_EVENT_CROSS_RESPONSE,
             "Untrusted proof, calimero_response receipt proof required"
         );
         let source_contract = parts[1];
