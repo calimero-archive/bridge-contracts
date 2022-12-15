@@ -47,7 +47,7 @@ const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
 
 /// Gas to call can_bridge on permissions manager
-const PERMISSIONS_OUTCOME_GAS: Gas = Gas(40_000_000_000_000);
+const PERMISSIONS_VERIFICATION_GAS: Gas = Gas(40_000_000_000_000);
 
 pub const PAUSE_DEPLOY_TOKEN: Mask = 1 << 0;
 pub const PAUSE_MINT: Mask = 1 << 1;
@@ -150,7 +150,7 @@ impl NonFungibleTokenConnector {
             "can_bridge",
             &serde_json::to_vec(&(&sender_id, ConnectorType::NFT)).unwrap(),
             NO_DEPOSIT,
-            PERMISSIONS_OUTCOME_GAS,
+            PERMISSIONS_VERIFICATION_GAS,
         );
 
         env::promise_return(env::promise_then(
