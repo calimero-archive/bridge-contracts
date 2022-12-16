@@ -12,6 +12,8 @@ use utils::{hashes, Hash};
 
 const NO_DEPOSIT: Balance = 0;
 
+const MAX_DESTINATION_GAS: Gas = Gas(200_000_000_000_000);
+
 /// Gas to use for cross_call_execute on self
 const CALL_GAS: Gas = Gas(20_000_000_000_000);
 
@@ -166,7 +168,17 @@ impl CrossShardConnector {
         let destination_gas = Gas(parts[4].parse::<u64>().unwrap());
         let destination_deposit = parts[5].parse::<u128>().unwrap();
 
-        require!(destination_deposit == 0, "Cross Shard Method called can not currently be payable");
+        require!(
+            destination_deposit == NO_DEPOSIT,
+            "Cross Shard Method called can not currently be payable"
+        );
+        require!(
+            destination_gas <= MAX_DESTINATION_GAS,
+            &format!(
+                "Cross Shard Method called can currently use max of {} gas",
+                MAX_DESTINATION_GAS.0
+            )
+        );
 
         let source_contract = parts[6];
         let source_contract_method = parts[7];
