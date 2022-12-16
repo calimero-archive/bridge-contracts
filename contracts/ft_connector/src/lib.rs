@@ -36,9 +36,6 @@ const FINISH_DEPOSIT_GAS: Gas = Gas(230_000_000_000_000);
 /// Gas to call verify_log_entry on prover.
 const VERIFY_LOG_ENTRY_GAS: Gas = Gas(50_000_000_000_000);
 
-/// Gas to call register method on FT.
-const REGISTER_FT_GAS: Gas = Gas(50_000_000_000_000);
-
 /// Gas to call finish unlock method.
 const FINISH_UNLOCK_GAS: Gas = Gas(30_000_000_000_000);
 
@@ -69,19 +66,6 @@ connector_base::impl_token_unlock!(
 
 #[near_bindgen]
 impl FungibleTokenConnector {
-    /// Used to register this connector to use an FT that requires prior registration
-    /// ex. wrap.testnet
-    #[payable]
-    pub fn register_ft(&mut self, ft_address: AccountId) {
-        env::promise_return(env::promise_create(
-            ft_address,
-            "storage_deposit",
-            &Vec::<u8>::new(),
-            env::attached_deposit(),
-            REGISTER_FT_GAS,
-        ))
-    }
-
     /// Emits a calimero lock event if transfer is successful
     pub fn ft_on_transfer(
         &mut self,
