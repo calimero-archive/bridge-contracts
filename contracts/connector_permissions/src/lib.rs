@@ -4,6 +4,9 @@ use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault};
 use regex::Regex;
 use types::ConnectorType;
 
+const ALLOW_REGEX_RULES_GETTER_SIZE: usize = 10;
+const DENY_REGEX_ACCOUNT_PER_CONTRACT_GETTER_SIZE: usize = 20;
+
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct ConnectorPermissions {
@@ -89,6 +92,26 @@ impl ConnectorPermissions {
                 account_id.as_str(),
                 &self.allow_regex_rules_for_cross_shard_calls,
             ),
+        }
+    }
+
+    fn get_rules_from_unordered_set(&self, rules_set: &UnorderedSet<String>) -> Vec<String> {
+        let mut rules: Vec<String> = Vec::new();
+        for rule in rules_set.iter() {
+            rules.push(rule);
+            if rules.len() == ALLOW_REGEX_RULES_GETTER_SIZE {
+                break;
+            }
+        }
+
+        rules
+    }
+
+    pub fn get_allow_regex_rules(&self, connector_type: ConnectorType) -> Vec<String> {
+        match connector_type {
+            ConnectorType::FT => self.get_rules_from_unordered_set(&self.allow_regex_rules_for_bridging_fts),
+            ConnectorType::NFT => self.get_rules_from_unordered_set(&self.allow_regex_rules_for_bridging_nfts),
+            ConnectorType::XSC => self.get_rules_from_unordered_set(&self.allow_regex_rules_for_cross_shard_calls)
         }
     }
 
@@ -202,5 +225,17 @@ impl ConnectorPermissions {
         }
 
         true
+    }
+
+    pub fn get_regex_account_per_contract_for_xsc(&self) -> Vec<(String, String)> {
+        let mut rules: Vec<(String, String)> = Vec::new();
+        for rule in self.deny_regex_account_per_regex_contract_for_cross_shard_calls.iter() {
+            rules.push(rule);
+            if rules.len() == DENY_REGEX_ACCOUNT_PER_CONTRACT_GETTER_SIZE {
+                break;
+            }
+        }
+
+        rules
     }
 }
