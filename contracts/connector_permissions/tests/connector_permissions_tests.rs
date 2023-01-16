@@ -322,5 +322,67 @@ mod connector_permissions {
                 .unwrap();
             assert_eq!(can_alice_call_contract_result, false);
         }
+
+        #[tokio::test]
+        async fn test_reset_permissions() {
+            let (worker, connector_permissions_contract) = init().await;
+
+            let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, format!("secret_key_ft_connector_{}", FT_CONNECTOR_ACCOUNT_ID).as_str());
+            let tla = workspaces::AccountId::try_from(FT_CONNECTOR_ACCOUNT_ID.to_string()).unwrap();
+            let connector_account = worker.create_tla(tla, sec).await.unwrap().unwrap();
+
+            let result = connector_account.call(&worker, connector_permissions_contract.id(), "add_allow_regex_rule")
+                .args_json(json!({
+                    "regex_rule": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::FT,
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .deposit(parse_near!("1"))
+                .transact()
+                .await
+                .unwrap();
+
+            assert!(result.is_success());
+
+            // Alice is no longer denied, should return true
+            let can_alice_bridge_result_1: bool = worker.view(
+                connector_permissions_contract.id(),
+                "can_bridge",
+                serde_json::to_vec(&serde_json::json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::FT,
+                })).unwrap())
+                .await
+                .unwrap()
+                .json()
+                .unwrap();
+
+            assert_eq!(can_alice_bridge_result_1, true);
+
+            let _result = connector_account.call(&worker, connector_permissions_contract.id(), "reset_permissions")
+                .args_json(json!({
+                    "connector_type": ConnectorType::FT,
+                }))
+                .unwrap()
+                .gas(parse_gas!("300 Tgas") as u64)
+                .transact()
+                .await;
+
+            // Alice is now denied because FT permissions are now deny all again, should return false
+            let can_alice_bridge_result_2: bool = worker.view(
+                connector_permissions_contract.id(),
+                "can_bridge",
+                serde_json::to_vec(&serde_json::json!({
+                    "account_id": ALICE_ACCOUNT_ID,
+                    "connector_type": ConnectorType::FT,
+                })).unwrap())
+                .await
+                .unwrap()
+                .json()
+                .unwrap();
+
+            assert_eq!(can_alice_bridge_result_2, false);
+        }
     }
 }

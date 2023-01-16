@@ -77,6 +77,25 @@ impl ConnectorPermissions {
         false
     }
 
+    // restarts permissions for a given connector, for FT, NFT and XSC all allow rules are removed,
+    // and for XSC additionally all deny rules per contract per account are also removed. Permissions are returned to the
+    // initial state (deny all).
+    pub fn reset_permissions(&mut self, connector_type: ConnectorType) {
+        assert_eq!(
+            env::predecessor_account_id(),
+            *self.connector_from_type(connector_type),
+            "Only corresponding connector can reset regex rules"
+        );
+        match connector_type {
+            ConnectorType::FT => self.allow_regex_rules_for_bridging_fts.clear(),
+            ConnectorType::NFT => self.allow_regex_rules_for_bridging_nfts.clear(),
+            ConnectorType::XSC => {
+                self.allow_regex_rules_for_cross_shard_calls.clear();
+                self.deny_regex_account_per_regex_contract_for_cross_shard_calls.clear();
+            }
+        }
+    }
+
     /// returns true if account_id is not denied per connector type
     pub fn can_bridge(&self, account_id: &AccountId, connector_type: ConnectorType) -> bool {
         match connector_type {
