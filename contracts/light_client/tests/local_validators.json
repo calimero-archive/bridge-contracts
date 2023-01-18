@@ -1,0 +1,8 @@
+[
+  {
+    "account_id": "local_node_0",
+    "public_key": "ed25519:63HMM2aWeMgtC9Ab7zeF7zATjhRwajtgnQEj7SKpbYCx",
+    "stake": "42069",
+    "validator_stake_struct_version": "V1"
+  }
+]
