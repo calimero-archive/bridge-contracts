@@ -261,7 +261,7 @@ impl LightClient {
                 self.signature_set |= 1 << i;
                 self.signatures.replace(i as u64, &approval);
                 if signature_stake < this_epoch.stake_threshold {
-                    self.check_block_producer_signature_in_head(i);
+                    require!(self.check_block_producer_signature_in_head(i), "Signature is not valid");
                 }
                 signature_stake += this_epoch.stakes[i];
             }

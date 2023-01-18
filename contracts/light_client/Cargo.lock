@@ -545,7 +545,9 @@ name = "light_client"
 version = "0.1.0"
 dependencies = [
  "admin_controlled",
+ "ed25519-dalek",
  "near-sdk",
+ "rand_core 0.5.1",
  "test_utils",
  "types",
  "utils",

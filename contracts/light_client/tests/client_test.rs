@@ -6,8 +6,11 @@ mod light_client {
         use near_sdk::test_utils::{accounts, VMContextBuilder};
         use near_sdk::{testing_env, AccountId};
         use test_utils::file_as_json;
-        use types::{Block, Validator};
+        use types::{Block, Validator, Signature};
+        use types::signature::{ED25519SecretKey, SecretKey};
         use utils::hashes::encode_hex;
+        use utils::Hashable;
+        use ed25519_dalek::Keypair;
 
         const TEST_BLOCK_TIMESTAMP_MULTIPLIER: u64 = 100000000;
 
@@ -102,6 +105,108 @@ mod light_client {
             }
 
             assert!(true);
+        }
+
+        #[test]
+        #[should_panic(expected = "Signature is not valid")]
+        fn add_with_invalid_signature() {
+            let keypair: Keypair = ed25519_dalek::Keypair::generate(&mut rand_core::OsRng);
+            let secret_key = SecretKey::ED25519(ED25519SecretKey(keypair.to_bytes()));
+
+            let mut bridge = init(None);
+            let validators = file_as_json::<Vec<Validator>>("validators.json").unwrap();
+            let block93439858 = file_as_json::<Block>("block_93439858.json").unwrap();
+            let mut block93447397 = file_as_json::<Block>("block_93447397.json").unwrap();
+
+            let mut incorrect_signatures: Vec<Option<Signature>> = Vec::new();
+            for _ in &validators {
+                let message = [
+                    &[0],
+                    &utils::hashes::combine_hash2(block93447397.next_block_inner_hash, block93447397.hash()) as &[_],
+                    &utils::swap_bytes8(block93447397.inner_lite.height + 2).to_be_bytes() as &[_],
+                ]
+                .concat();
+                let signature = secret_key.sign(&message);
+                incorrect_signatures.push(Some(signature));
+            }
+
+            block93447397.approvals_after_next = incorrect_signatures;
+
+            let context_93439858 = get_context(
+                accounts(0),
+                93439858 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                93439858,
+            );
+            testing_env!(context_93439858.build());
+            bridge.init_with_validators(validators);
+            bridge.init_with_block(block93439858);
+
+            let context_93447397 = get_context(
+                accounts(0),
+                93447397 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                93447397,
+            );
+            testing_env!(context_93447397.build());
+            bridge.add_light_client_block(block93447397.clone());
+
+            assert!(true);
+        }
+
+        fn local_net(message_part: u8) {
+            let key_bytes: [u8; ed25519_dalek::KEYPAIR_LENGTH] = utils::from_base("5b1F1LYTasZWx84Q7pq2aSu8EC6yR3UihmkCoekPPfGMr6CzKwGkWo5oWoimEfoajPd4a4ubu5R1FGJapNUGzQPa")
+                .unwrap()
+                .try_into()
+                .unwrap();
+            let secret_key = SecretKey::ED25519(ED25519SecretKey(key_bytes));
+
+            let mut bridge = init(None);
+            let validators = file_as_json::<Vec<Validator>>("local_validators.json").unwrap();
+            let block_1 = file_as_json::<Block>("local_block_1.json").unwrap();
+            let mut block_2 = file_as_json::<Block>("local_block_2.json").unwrap();
+
+            let mut incorrect_signatures: Vec<Option<Signature>> = Vec::new();
+            for _ in &validators {
+                let message = [
+                    &[message_part], // this should be 0 when correct
+                    &utils::hashes::combine_hash2(block_2.next_block_inner_hash, block_2.hash()) as &[_],
+                    &utils::swap_bytes8(block_2.inner_lite.height + 2).to_be_bytes() as &[_],
+                ]
+                .concat();
+                let signature = secret_key.sign(&message);
+                incorrect_signatures.push(Some(signature));
+            }
+
+            block_2.approvals_after_next = incorrect_signatures;
+
+            let context_1 = get_context(
+                accounts(0),
+                93439858 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                93439858,
+            );
+            testing_env!(context_1.build());
+            bridge.init_with_validators(validators);
+            bridge.init_with_block(block_1);
+
+            let context_2 = get_context(
+                accounts(0),
+                93447397 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                93447397,
+            );
+            testing_env!(context_2.build());
+            bridge.add_light_client_block(block_2.clone());
+            
+            assert!(true);
+        }
+
+        #[test]
+        fn local_net_signatures_valid() {
+            local_net(0);
+        }
+
+        #[test]
+        #[should_panic(expected = "Signature is not valid")]
+        fn add_with_invalid_message() {
+            local_net(1);
         }
 
         #[test]
