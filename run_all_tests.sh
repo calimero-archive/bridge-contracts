@@ -38,6 +38,7 @@ echo "-FT bridge token build and deploy done."
 echo "-Bridge token deployer build started..."
 cd ../bridge_token_deployer
 ./build_ft.sh
+./test_ft.sh
 echo "-Bridge token deployer build done."
 echo "-Mock prover build started..."
 cd ../mock_prover
@@ -61,6 +62,7 @@ echo "-NFT bridge token build and deploy done."
 echo "-Bridge token deployer build started..."
 cd ../bridge_token_deployer
 ./build_nft.sh
+./test_nft.sh
 echo "-Bridge token deployer build done."
 cd ../nft_connector
 ./build.sh

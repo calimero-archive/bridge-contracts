@@ -98,6 +98,36 @@ jobs:
       - name: Run Prover Test
         run: cd contracts/prover; ./build.sh; cargo test -- --nocapture
 
+  test_deployer:
+    name: Bridge Deployer test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@v3
+
+      - name: Set rust version
+        run: |
+          rustc --version
+          rustup install 1.61
+          rustup override set 1.61
+
+      - name: Install `wasm32-unknown-unknown`
+        run: rustup target add wasm32-unknown-unknown    
+
+      - name: Run Bridge Token Deployer Test
+        run: |
+          cd contracts/ft_bridge_token
+          ./build.sh
+          cd ../..
+          cd contracts/nft_bridge_token
+          ./build.sh
+          cd ../..
+          cd contracts/bridge_token_deployer
+          ./build_ft.sh
+          ./test_ft.sh
+          ./build_nft.sh
+          ./test_nft.sh
+
   test_permission:
     needs: build_mocks
     name: Contracts Permissions test
