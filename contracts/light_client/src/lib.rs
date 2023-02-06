@@ -260,12 +260,23 @@ impl LightClient {
             if let Some(approval) = block.approvals_after_next[i].clone() {
                 self.signature_set |= 1 << i;
                 self.signatures.replace(i as u64, &approval);
-                if signature_stake < this_epoch.stake_threshold {
-                    require!(self.check_block_producer_signature_in_head(i), "Signature is not valid");
-                }
-                signature_stake += this_epoch.stakes[i];
             }
         }
+        for i in 0..keys_len {
+            if self.signature_set & (1 << i) != 0 {
+                if self.check_block_producer_signature_in_head(i) {
+                    signature_stake += this_epoch.stakes[i];
+                }
+
+                if signature_stake > this_epoch.stake_threshold {
+                    break;
+                }
+            }
+        }
+        require!(
+            signature_stake > this_epoch.stake_threshold,
+            "Signature stake too low"
+        );
         self.next_epoch = from_next_epoch;
 
         if from_next_epoch {
