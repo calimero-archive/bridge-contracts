@@ -2,15 +2,15 @@
 mod light_client {
     mod test {
         use admin_controlled::AdminControlled;
+        use ed25519_dalek::Keypair;
         use light_client::{LightClient, PAUSE_ADD_BLOCK_HEADER};
         use near_sdk::test_utils::{accounts, VMContextBuilder};
         use near_sdk::{testing_env, AccountId};
         use test_utils::file_as_json;
-        use types::{Block, Validator, Signature};
         use types::signature::{ED25519SecretKey, SecretKey};
+        use types::{Block, Signature, Validator};
         use utils::hashes::encode_hex;
         use utils::Hashable;
-        use ed25519_dalek::Keypair;
 
         const TEST_BLOCK_TIMESTAMP_MULTIPLIER: u64 = 100000000;
 
@@ -108,7 +108,7 @@ mod light_client {
         }
 
         #[test]
-        #[should_panic(expected = "Signature is not valid")]
+        #[should_panic(expected = "Signature stake too low")]
         fn add_with_invalid_signature() {
             let keypair: Keypair = ed25519_dalek::Keypair::generate(&mut rand_core::OsRng);
             let secret_key = SecretKey::ED25519(ED25519SecretKey(keypair.to_bytes()));
@@ -122,8 +122,12 @@ mod light_client {
             for _ in &validators {
                 let message = [
                     &[0],
-                    &utils::hashes::combine_hash2(block93447397.next_block_inner_hash, block93447397.hash()) as &[_],
-                    &utils::swap_bytes8(block93447397.inner_lite.height + 2).to_be_bytes() as &[_],
+                    &utils::hashes::combine_hash2(
+                        block93447397.next_block_inner_hash,
+                        block93447397.hash(),
+                    ) as &[_],
+                    &utils::swap_bytes8(block93447397.inner_lite.height + 2).to_be_bytes()
+                        as &[_],
                 ]
                 .concat();
                 let signature = secret_key.sign(&message);
@@ -168,7 +172,8 @@ mod light_client {
             for _ in &validators {
                 let message = [
                     &[message_part], // this should be 0 when correct
-                    &utils::hashes::combine_hash2(block_2.next_block_inner_hash, block_2.hash()) as &[_],
+                    &utils::hashes::combine_hash2(block_2.next_block_inner_hash, block_2.hash())
+                        as &[_],
                     &utils::swap_bytes8(block_2.inner_lite.height + 2).to_be_bytes() as &[_],
                 ]
                 .concat();
@@ -194,7 +199,7 @@ mod light_client {
             );
             testing_env!(context_2.build());
             bridge.add_light_client_block(block_2.clone());
-            
+
             assert!(true);
         }
 
@@ -204,7 +209,7 @@ mod light_client {
         }
 
         #[test]
-        #[should_panic(expected = "Signature is not valid")]
+        #[should_panic(expected = "Signature stake too low")]
         fn add_with_invalid_message() {
             local_net(1);
         }
@@ -281,6 +286,26 @@ mod light_client {
 
                 assert!(true)
             }
+        }
+
+        #[test]
+        fn adding_block_in_next_epoch() {
+            let mut bridge = init(None);
+            let block_115780580 = file_as_json::<Block>("block_115780580.json").unwrap();
+            let initial_validators = block_115780580.clone().next_bps.unwrap();
+
+            let block_115799227 = file_as_json::<Block>("block_115799227.json").unwrap();
+
+            let context_115780580 = get_context(accounts(0), 115780580 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 115780580);
+            testing_env!(context_115780580.build());
+            bridge.init_with_validators(initial_validators);
+            bridge.init_with_block(block_115780580);
+
+            let context_115799227 = get_context(accounts(0), 115799227 * TEST_BLOCK_TIMESTAMP_MULTIPLIER, 115799227);
+            testing_env!(context_115799227.build());
+            bridge.add_light_client_block(block_115799227);
+
+            assert!(true)
         }
 
         #[test]
@@ -627,7 +652,7 @@ mod light_client {
         }
 
         #[test]
-        #[should_panic(expected="Epoch id of the block is not valid")]
+        #[should_panic(expected = "Epoch id of the block is not valid")]
         fn test_brdg121_skip_epoch_panic() {
             let mut bridge = init(None);
             let block105363159 = file_as_json::<Block>("block_105363159.json").unwrap();
