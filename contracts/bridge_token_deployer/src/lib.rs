@@ -13,7 +13,7 @@ const BRIDGE_TOKEN_BINARY: &[u8] = include_bytes!(std::env!(
 const NO_DEPOSIT: Balance = 0;
 
 /// Initial balance for the BridgeToken contract to cover storage and related.
-const BRIDGE_TOKEN_INIT_BALANCE: Balance = 30_000_000_000_000_000_000_000_000; // 30e24yN, 30N
+const BRIDGE_TOKEN_INIT_BALANCE: Balance = 5_000_000_000_000_000_000_000_000; // 5e24yN, 5N
 
 /// Gas to initialize BridgeToken contract.
 const BRIDGE_TOKEN_NEW: Gas = Gas(50_000_000_000_000);
