@@ -6,6 +6,7 @@ cd contracts
 echo "Light client tests start..."
 cd light_client
 ./build.sh
+./build_reset.sh
 cargo test -- --nocapture
 echo "Light client tests done."
 
