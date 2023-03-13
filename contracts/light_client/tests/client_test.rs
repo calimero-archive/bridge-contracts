@@ -108,6 +108,50 @@ mod light_client {
         }
 
         #[test]
+        fn test_network() {
+            let mut bridge = init(None);
+            let validators = file_as_json::<Vec<Validator>>("network_validators.json").unwrap();
+            let block1 = file_as_json::<Block>("network_block1.json").unwrap();
+            let block2 = file_as_json::<Block>("network_block2.json").unwrap();
+            let block3 = file_as_json::<Block>("network_block3.json").unwrap();
+            let block4 = file_as_json::<Block>("network_block4.json").unwrap();
+            let context1 = get_context(
+                accounts(0),
+                120159459 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                120159459,
+            );
+            testing_env!(context1.build());
+            bridge.init_with_validators(validators);
+            bridge.init_with_block(block1);
+
+            let context2 = get_context(
+                accounts(0),
+                120181546 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                120181546,
+            );
+            testing_env!(context2.build());
+            bridge.add_light_client_block(block2.clone());
+
+            let context3 = get_context(
+                accounts(0),
+                120203761 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                120203761,
+            );
+            testing_env!(context3.build());
+            bridge.add_light_client_block(block3.clone());
+
+            let context4 = get_context(
+                accounts(0),
+                120225000 * TEST_BLOCK_TIMESTAMP_MULTIPLIER,
+                120225000,
+            );
+            testing_env!(context4.build());
+            bridge.add_light_client_block(block4.clone());
+
+            assert!(true);
+        }
+
+        #[test]
         #[should_panic(expected = "Signature stake too low")]
         fn add_with_invalid_signature() {
             let keypair: Keypair = ed25519_dalek::Keypair::generate(&mut rand_core::OsRng);
