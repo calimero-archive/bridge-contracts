@@ -187,7 +187,7 @@ impl LightClient {
             "New block must have higher height"
         );
 
-        let from_next_epoch = if block.inner_lite.epoch_id
+        self.next_epoch = if block.inner_lite.epoch_id
             == self
                 .epochs
                 .iter()
@@ -212,7 +212,7 @@ impl LightClient {
         };
 
         // Check that the new block is signed by more than 2/3 of the validators.
-        let this_epoch = &if from_next_epoch {
+        let this_epoch = &if self.next_epoch {
             self.epochs
                 .iter()
                 .nth((self.current_epoch_index + 1) % NUM_OF_EPOCHS)
@@ -237,7 +237,7 @@ impl LightClient {
         require!(voted_for > this_epoch.stake_threshold, "Too few approvals");
 
         // If the block is from the next epoch, make sure that next_bps is supplied and has a correct hash.
-        if from_next_epoch {
+        if self.next_epoch {
             require!(block.next_bps.is_some(), "Next next_bps should not be None");
             require!(
                 LightClient::hash_of_block_producers(block.next_bps.as_ref().unwrap())
@@ -277,9 +277,8 @@ impl LightClient {
             signature_stake > this_epoch.stake_threshold,
             "Signature stake too low"
         );
-        self.next_epoch = from_next_epoch;
 
-        if from_next_epoch {
+        if self.next_epoch {
             let epoch_idx = (self.current_epoch_index + 2) % NUM_OF_EPOCHS;
             let mut next_epoch = self.epochs.iter().nth(epoch_idx).unwrap();
             next_epoch.epoch_id = block.inner_lite.next_epoch_id;
@@ -301,7 +300,7 @@ impl LightClient {
             self.block_merkle_roots.pop_back();
         }
 
-        if from_next_epoch {
+        if self.next_epoch {
             self.current_epoch_index = (self.current_epoch_index + 1) % NUM_OF_EPOCHS;
         }
     }
