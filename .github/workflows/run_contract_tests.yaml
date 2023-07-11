@@ -13,8 +13,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -30,8 +30,8 @@ jobs:
 
       - name: Move builds
         run: |
-          cp contracts/mock_prover/target/wasm32-unknown-unknown/release/mock_prover.wasm .
-          cp contracts/mock_light_client/target/wasm32-unknown-unknown/release/mock_light_client.wasm .
+          cp contracts/target/wasm32-unknown-unknown/release/mock_prover.wasm .
+          cp contracts/target/wasm32-unknown-unknown/release/mock_light_client.wasm .
 
       - name: Store builds
         uses: actions/upload-artifact@v3
@@ -51,8 +51,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -81,16 +81,16 @@ jobs:
           name: mocks
       - name: Move mocks
         run: |
-          mkdir contracts/mock_light_client/target
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
+          mkdir contracts/target
+          mkdir contracts/target/wasm32-unknown-unknown
+          mkdir contracts/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/target/wasm32-unknown-unknown/release
 
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -108,8 +108,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -142,20 +142,17 @@ jobs:
           name: mocks
       - name: Move mocks
         run: |
-          mkdir contracts/mock_light_client/target
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          mkdir contracts/mock_prover/target
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
-          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+          mkdir contracts/target
+          mkdir contracts/target/wasm32-unknown-unknown
+          mkdir contracts/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/target/wasm32-unknown-unknown/release
 
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -177,20 +174,17 @@ jobs:
           name: mocks
       - name: Move mocks
         run: |
-          mkdir contracts/mock_light_client/target
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          mkdir contracts/mock_prover/target
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
-          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+          mkdir contracts/target
+          mkdir contracts/target/wasm32-unknown-unknown
+          mkdir contracts/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/target/wasm32-unknown-unknown/release
 
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -212,20 +206,17 @@ jobs:
           name: mocks
       - name: Move mocks
         run: |
-          mkdir contracts/mock_light_client/target
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          mkdir contracts/mock_prover/target
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
-          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+          mkdir contracts/target
+          mkdir contracts/target/wasm32-unknown-unknown
+          mkdir contracts/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/target/wasm32-unknown-unknown/release
 
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -247,20 +238,17 @@ jobs:
           name: mocks
       - name: Move mocks
         run: |
-          mkdir contracts/mock_light_client/target
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown
-          mkdir contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          cp mock_light_client.wasm contracts/mock_light_client/target/wasm32-unknown-unknown/release
-          mkdir contracts/mock_prover/target
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown
-          mkdir contracts/mock_prover/target/wasm32-unknown-unknown/release
-          cp mock_prover.wasm contracts/mock_prover/target/wasm32-unknown-unknown/release
+          mkdir contracts/target
+          mkdir contracts/target/wasm32-unknown-unknown
+          mkdir contracts/target/wasm32-unknown-unknown/release
+          cp mock_light_client.wasm contracts/target/wasm32-unknown-unknown/release
+          cp mock_prover.wasm contracts/target/wasm32-unknown-unknown/release
 
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    

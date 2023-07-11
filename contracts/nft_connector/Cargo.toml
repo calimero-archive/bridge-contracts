@@ -23,13 +23,3 @@ near-jsonrpc-client = "= 0.4.0-beta.0"
 near-units = "0.2.0"
 test_utils = { path = "../test_utils" }
 serde_json = "1.0.85"
-
-[profile.release]
-codegen-units = 1
-# Tell `rustc` to optimize for small code size.
-opt-level = "z"
-lto = true
-debug = false
-panic = "abort"
-# Opt into extra safety checks on arithmetic operations https://stackoverflow.com/a/64136471/249801
-overflow-checks = true

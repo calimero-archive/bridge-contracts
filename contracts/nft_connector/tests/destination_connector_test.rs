@@ -18,8 +18,8 @@ mod connector {
         async fn init() -> (Worker<Sandbox>, Contract, Contract) {
             let worker = workspaces::sandbox().await.unwrap();
             // deploy contracts
-            let prover_wasm = std::fs::read(
-                "../mock_prover/target/wasm32-unknown-unknown/release/mock_prover.wasm",
+            let prover_wasm: Vec<u8> = std::fs::read(
+                "../target/wasm32-unknown-unknown/release/mock_prover.wasm",
             )
                 .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
@@ -29,7 +29,7 @@ mod connector {
                 .unwrap();
             let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();
             let connector_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/nft_connector.wasm",
+                "../target/wasm32-unknown-unknown/release/nft_connector.wasm",
             )
                 .unwrap();
 

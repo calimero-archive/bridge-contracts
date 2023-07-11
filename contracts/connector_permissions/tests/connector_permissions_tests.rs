@@ -22,7 +22,7 @@ mod connector_permissions {
             let tla3 = workspaces::AccountId::try_from(XSC_CONNECTOR_ACCOUNT_ID.to_string()).unwrap();
 
             let connector_permissions_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/connector_permissions.wasm",
+                "../target/wasm32-unknown-unknown/release/connector_permissions.wasm",
             )
                 .unwrap();
             let connector_permissions_contract = worker.dev_deploy(&connector_permissions_wasm).await.unwrap();

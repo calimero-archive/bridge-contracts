@@ -14,12 +14,12 @@ mod prover {
             let worker = workspaces::sandbox().await.unwrap();
             // deploy contracts
             let bridge_wasm = std::fs::read(
-                "../mock_light_client/target/wasm32-unknown-unknown/release/mock_light_client.wasm",
+                "../target/wasm32-unknown-unknown/release/mock_light_client.wasm",
             )
             .unwrap();
             let bridge_contract = worker.dev_deploy(&bridge_wasm).await.unwrap();
             let prover_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/prover.wasm",
+                "../target/wasm32-unknown-unknown/release/prover.wasm",
             )
             .unwrap();
             let prover_contract = worker.dev_deploy(&prover_wasm).await.unwrap();
