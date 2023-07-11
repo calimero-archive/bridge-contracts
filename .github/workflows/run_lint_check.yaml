@@ -13,8 +13,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -32,8 +32,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -51,8 +51,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -70,8 +70,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -89,8 +89,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -108,8 +108,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -127,8 +127,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -146,8 +146,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -165,8 +165,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup target add wasm32-unknown-unknown
           rustup component add clippy
 
@@ -192,8 +192,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -211,8 +211,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy
@@ -230,8 +230,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.61
-          rustup override set 1.61
+          rustup install 1.64
+          rustup override set 1.64
           rustup component add clippy
 
       - name: Run Clippy

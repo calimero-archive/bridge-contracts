@@ -15,7 +15,7 @@ mod connector {
             let sec = workspaces::types::SecretKey::from_seed(workspaces::types::KeyType::ED25519, "secret_key_1");
             let tla = workspaces::AccountId::try_from(DEPLOYER_ACCOUNT_ID.to_string()).unwrap();
             let deployer_wasm = std::fs::read(
-                "./target/wasm32-unknown-unknown/release/bridge_token_deployer.wasm",
+                "../target/wasm32-unknown-unknown/release/bridge_token_deployer.wasm",
             )
                 .unwrap();
 
