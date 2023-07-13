@@ -13,8 +13,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -51,8 +51,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -89,8 +89,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -108,8 +108,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -151,8 +151,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -183,8 +183,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -215,8 +215,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    
@@ -247,8 +247,8 @@ jobs:
       - name: Set rust version
         run: |
           rustc --version
-          rustup install 1.64
-          rustup override set 1.64
+          rustup install 1.69
+          rustup override set 1.69
 
       - name: Install `wasm32-unknown-unknown`
         run: rustup target add wasm32-unknown-unknown    

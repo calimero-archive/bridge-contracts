@@ -25,6 +25,6 @@ impl MockLightClient {
     }
 
     pub fn block_merkle_roots(&self, height: u64) -> Option<Hash> {
-        self.merkle_roots.get(&height).map(|&x| x)
+        self.merkle_roots.get(&height).copied()
     }
 }
